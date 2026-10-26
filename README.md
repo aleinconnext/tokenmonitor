@@ -153,6 +153,7 @@ The application has **no telemetry**, no analytics and no accounts. It never log
 | Command | Description |
 |---|---|
 | `make run` | Run the application from the source tree. |
+| `make test` | Run the local smoke suite (syntax, GTK, providers, assets, package, window). |
 | `make user-install` | Install into `~/.local` (no root). |
 | `make autostart` | Add the app to the login session. |
 | `make deb` | Build a `.deb` into `dist/`. |
@@ -176,6 +177,18 @@ tokenmonitor/
 ├── Makefile
 └── LICENSE
 ```
+
+## Testing
+
+Every change is validated on the development machine before it is published:
+
+```bash
+make test
+```
+
+The suite checks Python syntax, GTK 4 / Pycairo imports, headless collection from all three providers, the README assets, the `.deb` build and its parity with `src/`, the per-user installation, and the live window geometry. Use `make test ARGS=--strict` to turn the installation-sync warning into a failure — that is the mode used before tagging a release.
+
+The window check reuses a running instance when there is one and launches the app from `src/` otherwise, so it never disturbs an installed copy.
 
 ## Limitations
 

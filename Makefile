@@ -2,10 +2,13 @@ VERSION ?= $(shell awk '/^Version:/{print $$2}' packaging/control)
 PYTHON  ?= python3
 HOME    ?= $(shell echo ~)
 
-.PHONY: run user-install autostart uninstall deb clean
+.PHONY: run test user-install autostart uninstall deb clean
 
 run:
 	GDK_BACKEND=x11 $(PYTHON) src/tokenmon.py
+
+test:
+	./scripts/smoke-test.sh $(ARGS)
 
 user-install:
 	install -Dm644 src/tokenmon.py $(HOME)/.local/share/tokenmonitor/tokenmon.py
