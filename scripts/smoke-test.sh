@@ -162,10 +162,10 @@ LINE=$(wmctrl -lG 2>/dev/null | grep "Token Monitor" | head -1)
 if [[ -n "$LINE" ]]; then
   W=$(awk '{print $5}' <<<"$LINE")
   H=$(awk '{print $6}' <<<"$LINE")
-  if [[ "$W $H" == "342 166" || "$W $H" == "138 390" ]]; then
+  if [[ "$W $H" == "342 183" || "$W $H" == "138 438" ]]; then
     ok "janela visível e com geometria esperada (${W}×${H})"
   else
-    bad "geometria inesperada: ${W}×${H} (esperado 342×166 ou 138×390)"
+    bad "geometria inesperada: ${W}×${H} (esperado 342×183 ou 138×438)"
   fi
 else
   bad "janela 'Token Monitor' não encontrada no X11"

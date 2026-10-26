@@ -26,10 +26,15 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 import cairo
-from gi.repository import Gdk, GLib, Gtk, Pango
+from gi.repository import Gdk, Gio, GLib, Gtk, Pango
 
 APP_ID = "io.github.tokenmonitor.TokenMonitor"
 TITLE = "Token Monitor"
+AUTHOR = "Alessandro Gonçalves"
+AUTHOR_ROLE = "Software Engineer"
+REPO_SLUG = "aleinconnext/tokenmonitor"
+REPO_NAME = "tokenmonitor"
+REPO_URL = f"https://github.com/{REPO_SLUG}"
 CTX_WINDOW = 200_000
 STATE_DIR = "~/.config/tokenmonitor"
 STATE_FILE = "~/.config/tokenmonitor/state.json"
@@ -45,8 +50,8 @@ RED = (1.000, 0.361, 0.361)
 CARD_ALPHA = 0.72
 MARGIN = 8
 SNAP = 40
-HORIZONTAL_SIZE = (342, 166)
-VERTICAL_SIZE = (138, 390)
+HORIZONTAL_SIZE = (342, 183)
+VERTICAL_SIZE = (138, 438)
 GAUGE_SIZE = 92
 GAUGE_GAP = 10
 
@@ -63,6 +68,9 @@ ICONS_B64 = {
     ),
 }
 
+# Marca do GitHub (branco, 96x96) usada na assinatura do card.
+GITHUB_ICON_B64 = "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"
+
 CSS = f"""
 window, window.background {{ background: transparent; }}
 .tokenmon-card {{
@@ -74,6 +82,13 @@ window, window.background {{ background: transparent; }}
 .menu-title {{ font-size: 9px; color: #6f7789; padding: 4px 8px 0 8px; }}
 .menu-btn {{ font-size: 11px; color: #e8ecf3; }}
 .menu-btn:hover {{ background-color: rgba(255,255,255,0.08); }}
+.tokenmon-credit {{ background: none; background-image: none; border: none; box-shadow: none; padding: 0; min-height: 0; min-width: 0; }}
+.tokenmon-credit:hover {{ background: none; }}
+.tokenmon-credit label {{ color: rgba(233, 237, 245, 0.58); font-size: 8px; }}
+.tokenmon-credit .credit-sep {{ color: rgba(150, 160, 180, 0.35); }}
+.tokenmon-credit .credit-repo {{ color: rgba(150, 160, 180, 0.55); }}
+.tokenmon-credit:hover label {{ color: rgba(233, 237, 245, 0.90); }}
+.tokenmon-credit:hover .credit-repo {{ color: rgba(61, 220, 132, 0.90); }}
 """
 
 ANCHORS = {
@@ -673,6 +688,9 @@ class App(Gtk.Application):
         self.status.set_margin_top(6)
         card.append(self.status)
 
+        self.credit = self._build_credit()
+        card.append(self.credit)
+
         outer.append(card)
         self.outer = outer
         self.card = card
@@ -903,6 +921,7 @@ class App(Gtk.Application):
             self.row.set_orientation(Gtk.Orientation.HORIZONTAL)
             self.status.set_visible(True)
             size = HORIZONTAL_SIZE
+        self._style_credit(vertical)
         self.row.set_halign(Gtk.Align.CENTER)
         self.row.set_valign(Gtk.Align.CENTER)
         self.win.set_default_size(*size)
@@ -1081,6 +1100,78 @@ class App(Gtk.Application):
     def _sync_above_label(self):
         on = self.state.get("above", True)
         self.btn_above.set_label(f"Sempre no topo: {'ligado' if on else 'desligado'}")
+
+    def _build_credit(self):
+        """Assinatura discreta: ícone do GitHub + autor + repositório."""
+        btn = Gtk.Button()
+        btn.add_css_class("tokenmon-credit")
+        btn.set_tooltip_markup(
+            f"<b>{AUTHOR}</b>\n{AUTHOR_ROLE}\n<small>github.com/{REPO_SLUG}</small>"
+        )
+        btn.connect("clicked", self._open_repo)
+        try:
+            btn.set_cursor(Gdk.Cursor.new_from_name("pointer", None))
+        except Exception:  # noqa: BLE001
+            pass
+
+        icon = Gtk.Image.new_from_paintable(
+            Gdk.Texture.new_from_bytes(GLib.Bytes.new(base64.b64decode(GITHUB_ICON_B64)))
+        )
+        icon.set_pixel_size(13)
+        icon.set_opacity(0.60)
+        icon.set_halign(Gtk.Align.CENTER)
+        icon.set_valign(Gtk.Align.CENTER)
+
+        text = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        text.set_valign(Gtk.Align.CENTER)
+        name = Gtk.Label(label=AUTHOR)
+        name.add_css_class("credit-name")
+        sep = Gtk.Label(label="·")
+        sep.add_css_class("credit-sep")
+        repo = Gtk.Label(label=REPO_SLUG)
+        repo.add_css_class("credit-repo")
+        for widget in (name, sep, repo):
+            widget.set_halign(Gtk.Align.CENTER)
+            text.append(widget)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
+        box.set_halign(Gtk.Align.CENTER)
+        box.append(icon)
+        box.append(text)
+        btn.set_child(box)
+
+        self.credit = btn
+        self.credit_box = box
+        self.credit_icon = icon
+        self.credit_text = text
+        self.credit_sep = sep
+        self.credit_repo = repo
+        self._style_credit(bool(self.state.get("vertical")))
+        return btn
+
+    def _style_credit(self, vertical: bool):
+        if vertical:
+            self.credit_box.set_orientation(Gtk.Orientation.VERTICAL)
+            self.credit_text.set_orientation(Gtk.Orientation.VERTICAL)
+            self.credit_sep.set_visible(False)
+            self.credit_repo.set_text(REPO_NAME)
+            self.credit.set_margin_top(6)
+        else:
+            self.credit_box.set_orientation(Gtk.Orientation.HORIZONTAL)
+            self.credit_text.set_orientation(Gtk.Orientation.HORIZONTAL)
+            self.credit_sep.set_visible(True)
+            self.credit_repo.set_text(REPO_SLUG)
+            self.credit.set_margin_top(4)
+        self.credit.set_halign(Gtk.Align.CENTER)
+
+    def _open_repo(self, *_):
+        try:
+            Gio.AppInfo.launch_default_for_uri(REPO_URL, None)
+        except Exception:  # noqa: BLE001
+            try:
+                subprocess.Popen(["xdg-open", REPO_URL])
+            except OSError:
+                pass
 
     @staticmethod
     def _attrs(size=10, weight=Pango.Weight.NORMAL):

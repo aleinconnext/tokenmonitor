@@ -12,6 +12,13 @@ OpenAI. All rights remain with their respective owners. They are used here
 solely to identify the products whose usage is being monitored; their presence
 does not imply endorsement or affiliation.
 
+## GitHub mark
+
+The GitHub mark embedded in the application credit and in `docs/author.png`
+comes from [Octicons](https://github.com/primer/octicons), released under the
+MIT License. It is a trademark of GitHub, Inc. and is used only to link to the
+project's repository.
+
 ## Design inspiration
 
 The notch-like presentation and the idea of ambient usage rings come from

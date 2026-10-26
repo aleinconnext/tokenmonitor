@@ -38,7 +38,8 @@ The design is inspired by [codenotch](https://github.com/vinzdg/codenotch) for m
 - **Multi-monitor aware** — anchors to the monitor under the cursor and can be moved between displays from the menu.
 - **Persistent state** — anchor, monitor, orientation and free position survive restarts.
 - **Single instance** — launching it again simply raises the existing widget.
-- **Privacy first** — reads local files, sends no telemetry, and makes exactly one outbound request (Cursor's own usage endpoint, with the token already stored on your machine).
+- **Private by design** — reads local files, sends no telemetry, and makes exactly one outbound request (Cursor's own usage endpoint, with the token already stored on your machine).
+- **Discreet signature** — a small GitHub mark, the author's name and the repository path sit at the bottom of the card; hovering highlights it and a click opens the project on GitHub.
 
 ## Screenshots
 
@@ -68,7 +69,7 @@ The design is inspired by [codenotch](https://github.com/vinzdg/codenotch) for m
 Download the latest `.deb` from the [releases page](https://github.com/aleinconnext/tokenmonitor/releases/latest) and install it:
 
 ```bash
-sudo dpkg -i tokenmonitor_2.3.2_all.deb
+sudo dpkg -i tokenmonitor_2.3.3_all.deb
 sudo apt-get -f install   # resolves dependencies, if needed
 ```
 
@@ -109,8 +110,8 @@ make run
 
 - **Drag anywhere on the card.** Movement is handled directly through X11 so the release event is never swallowed by the compositor.
 - **Release near an edge** (within 40 px) to snap:
-  - left or right → vertical layout, 138 × 390;
-  - top or bottom → horizontal layout, 342 × 166;
+  - left or right → vertical layout, 138 × 438;
+  - top or bottom → horizontal layout, 342 × 183;
   - somewhere in the middle → free position.
 - **Right-click** for the menu: eight anchors, *Switch monitor*, *Always on top*, and shortcuts for the FreeLLMAPI dashboard and the `claude-monitor` TUI when those are available.
 
