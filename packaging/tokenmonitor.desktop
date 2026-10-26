@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Token Monitor
+Comment=Uso de Claude Code, Cursor e Codex em gauges
+Exec=tokenmonitor
+Icon=tokenmonitor
+Terminal=false
+Categories=Utility;Monitor;
+StartupNotify=false

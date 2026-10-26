@@ -1,0 +1,5 @@
+#!/bin/sh
+# Força o backend X11 (XWayland): o GNOME não expõe always-on-top nem
+# posicionamento para apps Wayland nativos, mas honra EWMH no XWayland.
+export GDK_BACKEND=x11
+exec python3 /usr/lib/tokenmonitor/tokenmon.py "$@"
