@@ -212,8 +212,13 @@ make run
 
 ## Author
 
-**Alessandro Gonçalves** — Software Engineer
-[github.com/aleinconnext](https://github.com/aleinconnext)
+**[Alessandro Gonçalves](https://github.com/aleinconnext)** — Software Engineer
+
+<p align="center">
+  <a href="https://github.com/aleinconnext/tokenmonitor" title="aleinconnext/tokenmonitor">
+    <img src="docs/author.png" height="44" alt="Alessandro Gonçalves · Software Engineer · aleinconnext/tokenmonitor">
+  </a>
+</p>
 
 ## License
 
