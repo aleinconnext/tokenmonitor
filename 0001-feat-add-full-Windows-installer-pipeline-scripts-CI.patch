@@ -1,0 +1,319 @@
+From 4f3dd2e8632881ffb0cb9bd86f35c09a88eeeaad Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alessandro=20Gon=C3=A7alves?=
+ <10013256+aleinconnext@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 16:57:24 -0300
+Subject: [PATCH] feat: add full Windows installer pipeline (scripts + CI)
+
+---
+ .github/workflows/windows-build.yml |  61 ++++++++++++++++
+ CHANGELOG.md                        |   1 +
+ windows/build_windows.sh            | 109 ++++++++++++++++++++++++++++
+ windows/tokenmonitor.iss            |  46 ++++++++++++
+ windows/tokenmonitor.spec           |  47 ++++++++++++
+ 5 files changed, 264 insertions(+)
+ create mode 100644 .github/workflows/windows-build.yml
+ create mode 100644 CHANGELOG.md
+ create mode 100644 windows/build_windows.sh
+ create mode 100644 windows/tokenmonitor.iss
+ create mode 100644 windows/tokenmonitor.spec
+
+diff --git a/.github/workflows/windows-build.yml b/.github/workflows/windows-build.yml
+new file mode 100644
+index 0000000..e9bd6d7
+--- /dev/null
++++ b/.github/workflows/windows-build.yml
+@@ -0,0 +1,61 @@
++name: Build & Release Windows Installer
++
++on:
++  push:
++    tags:
++      - 'v*'                     # dispara a cada nova tag vX.Y.Z
++  workflow_dispatch: {}           # permite disparo manual
++
++jobs:
++  build-windows:
++    runs-on: windows-latest
++    permissions:
++      contents: write            # necessário para criar/releases
++      packages: write
++    steps:
++      - name: Checkout repository
++        uses: actions/checkout@v4
++        with:
++          fetch-depth: 0         # traz todas as tags
++
++      - name: Set up Python
++        uses: actions/setup-python@v5
++        with:
++          python-version: '3.12'
++          architecture: 'x64'
++
++      - name: Install Inno Setup
++        run: choco install innosetup -y
++
++      - name: Install Python deps
++        run: |
++          python -m pip install --upgrade pip
++          pip install pyinstaller==6.10.0
++          pip install https://github.com/tschoonj/pygobject-win-build/releases/download/pygobject-3.48.2/pygobject-3.48.2-cp312-cp312-win_amd64.whl
++
++      - name: Download GTK runtime
++        run: |
++          mkdir windows\gtk
++          curl -L -o gtk.zip https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment/releases/download/gtk-4.14.0/gtk-4.14.0-win64.zip
++          tar -xf gtk.zip -C windows\gtk --strip-components=1
++          del gtk.zip
++
++      - name: Build executable with PyInstaller
++        run: |
++          cd windows
++          pyinstaller tokenmonitor.spec
++          cd ..
++
++      - name: Build installer (.exe) with Inno Setup
++        run: |
++          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows\tokenmonitor.iss
++
++      - name: Create GitHub Release
++        env:
++          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++        run: |
++          TAG_NAME=${GITHUB_REF#refs/tags/}
++          RELEASE_NAME="TokenMonitor ${TAG_NAME#v} – Windows"
++          gh release create "${TAG_NAME}" "windows/TokenMonitor-${TAG_NAME#v}-win.exe" \
++            --title "${RELEASE_NAME}" \
++            --notes "Release automática gerada pelo workflow GitHub Actions."
+\ No newline at end of file
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+new file mode 100644
+index 0000000..44313ac
+--- /dev/null
++++ b/CHANGELOG.md
+@@ -0,0 +1 @@
++## Unreleased
+\ No newline at end of file
+diff --git a/windows/build_windows.sh b/windows/build_windows.sh
+new file mode 100644
+index 0000000..f2bed0f
+--- /dev/null
++++ b/windows/build_windows.sh
+@@ -0,0 +1,109 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++# -------------------------------------------------
++# 1️⃣  Atualiza a branch atual (main) e pega a última tag
++# -------------------------------------------------
++git fetch --tags
++LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
++echo "Última tag: $LAST_TAG"
++
++# -------------------------------------------------
++# 2️⃣  Incrementa PATCH (vMAJOR.MINOR.PATCH)
++# -------------------------------------------------
++# Remove o 'v' e separa os números
++MAJOR_MINOR_PATCH="${LAST_TAG#v}"
++IFS='.' read -r MAJOR MINOR PATCH <<<"$MAJOR_MINOR_PATCH"
++NEW_PATCH=$((PATCH + 1))
++NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
++echo "Nova versão: $NEW_VERSION"
++
++# -------------------------------------------------
++# 3️⃣  Atualiza o arquivo CHANGELOG.md (primeira linha)
++# -------------------------------------------------
++# Insere a nova versão no topo do CHANGELOG
++if [ -f "CHANGELOG.md" ]; then
++  # Insere a nova seção antes da primeira linha existente
++  NEW_ENTRY="## $NEW_VERSION - $(date +%Y-%m-%d)
++---
++### Added
++- Initial Windows installer support (installer.exe).
++### Changed
++-
++### Fixed
++-"
++  # Prepend (não remove as seções antigas, apenas adiciona no topo)
++  TEMP=$(cat CHANGELOG.md)
++  echo "$NEW_ENTRY" > CHANGELOG.md
++  echo "$TEMP" >> CHANGELOG.md
++fi
++
++# -------------------------------------------------
++# 4️⃣  Commit da atualização do CHANGELOG e da tag
++# -------------------------------------------------
++git add CHANGELOG.md
++git commit -m "chore: bump version to $NEW_VERSION"
++git tag "v$NEW_VERSION"
++
++# -------------------------------------------------
++# 5️⃣  Baixa o runtime GTK para Windows (64‑bit)
++# -------------------------------------------------
++mkdir -p windows/gtk
++GTK_URL="https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment/releases/download/gtk-4.14.0/gtk-4.14.0-win64.zip"
++echo "Baixando GTK runtime de $GTK_URL ..."
++curl -L -o windows/gtk.zip "$GTK_URL"
++mkdir -p windows/gtk-tmp
++tar -xf windows/gtk.zip -C windows/gtk-tmp --strip-components=1
++mv windows/gtk-tmp/* windows/gtk/
++rm -rf windows/gtk-tmp windows/gtk.zip
++echo "GTK runtime extraído em windows/gtk/"
++
++# -------------------------------------------------
++# 6️⃣  Instala dependências Python (PyInstaller + PyGObject wheel)
++# -------------------------------------------------
++python -m pip install --upgrade pip
++pip install pyinstaller==6.10.0
++# Instala a wheel do PyGObject para Windows (versão compatível com Python 3.12 x64)
++PIP_URL="https://github.com/tschoonj/pygobject-win-build/releases/download/pygobject-3.48.2/pygobject-3.48.2-cp312-cp312-win_amd64.whl"
++echo "Instalando PyGObject wheel..."
++pip install "$PIP_URL"
++
++# -------------------------------------------------
++# 7️⃣  Cria o executável com PyInstaller
++# -------------------------------------------------
++cd windows
++echo "Executando PyInstaller..."
++pyinstaller tokenmonitor.spec
++cd ..
++
++# -------------------------------------------------
++# 8️⃣  Compila o instalador .exe com Inno Setup
++# -------------------------------------------------
++# Espera-se que o Inno Setup esteja instalado em C:\Program Files (x86)\Inno Setup 6\
++ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
++if [ ! -x "$ISCC" ]; then
++  echo "⚠️  Inno Setup não encontrado em $ISCC – instalando via Chocolatey (apenas Windows)."
++  # No Linux não conseguimos instalar Chocolatey; avise o usuário.
++  echo "Por favor, instale o Inno Setup manualmente e execute o script novamente."
++  exit 1
++fi
++echo "Compilando instalador com Inno Setup..."
++"$ISCC" windows/tokenmonitor.iss
++
++# -------------------------------------------------
++# 9️⃣  Cria a Release no GitHub (usando gh CLI)
++# -------------------------------------------------
++# O script presume que o usuário já tenha feito login:
++#   gh auth login
++#   gh auth refresh -h github.com -s repo,write:repo_hook
++TAG_NAME="${NEW_VERSION#v}"
++RELEASE_NOTES="Release automática gerada pelo script de build Windows.\n\n**O que há de novo:**\n- Instalador .exe (um‑clique).\n- Integração completa com GTK 4.\n- Suporte a Docker/FreeLLMAPI (quando disponível).\n- Persistência de estado em %APPDATA%\\tokenmonitor."
++
++echo "Criando release GitHub v$TAG_NAME ..."
++gh release create "v$TAG_NAME" \
++    "windows/TokenMonitor-${TAG_NAME}-win.exe" \
++    --title "TokenMonitor $TAG_NAME – Windows Installer" \
++    --notes "$RELEASE_NOTES"
++
++echo "✅  Release v$TAG_NAME publicada com sucesso!"
++echo "Artefato: windows/TokenMonitor-${TAG_NAME}-win.exe"
+\ No newline at end of file
+diff --git a/windows/tokenmonitor.iss b/windows/tokenmonitor.iss
+new file mode 100644
+index 0000000..91c227c
+--- /dev/null
++++ b/windows/tokenmonitor.iss
+@@ -0,0 +1,46 @@
++; ----------------------------------------------------------------------
++; TokenMonitor-<versão>-win.exe  –  Instalação "um-clique"
++; ----------------------------------------------------------------------
++
++#define MyAppName "TokenMonitor"
++#define MyAppVersion "2.4.0"                ; ← altere conforme a tag
++#define MyAppPublisher "Alessandro Gonçalves"
++#define MyAppURL "https://github.com/aleinconnext/tokenmonitor"
++
++[Setup]
++AppName={#MyAppName}
++AppVersion={#MyAppVersion}
++DefaultDirName={pf}\{#MyAppName}
++DefaultGroupName={#MyAppName}
++OutputBaseFilename={#MyAppName}-{#MyAppVersion}-win
++Compression=lzma
++SolidCompression=yes
++WizardStyle=modern
++ArchitecturesAllowed=x64
++PrivilegesRequired=lowest
++DisableDirPage=no
++LicenseFile=..\LICENSE
++
++[Files]
++; Executável gerado pelo PyInstaller
++Source: "..\dist\tokenmonitor\tokenmonitor.exe"; DestDir: "{app}"; Flags: ignoreversion
++
++; GTK-runtime – será extraído em {app}\gtk
++Source: "gtk\*"; DestDir: "{app}\gtk"; Flags: recursesubdirs createallsubdirs
++
++; Imagens e banner
++Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: recursesubdirs createallsubdirs
++
++; Ícone do programa
++Source: "..\packaging\tokenmonitor.svg"; DestDir: "{app}"; Flags: ignoreversion
++
++[Icons]
++Name: "{group}\Token Monitor"; Filename: "{app}\tokenmonitor.exe"
++Name: "{commondesktop}\Token Monitor"; Filename: "{app}\tokenmonitor.exe"; Tasks: desktopicon
++
++[Run]
++; Cria a pasta de configuração em %APPDATA%
++Filename: "cmd.exe"; Parameters: "/c md ""%APPDATA%\tokenmonitor"""; Flags: runhidden
++
++[UninstallDelete]
++Type: filesandordirs; Name: "{app}"
+diff --git a/windows/tokenmonitor.spec b/windows/tokenmonitor.spec
+new file mode 100644
+index 0000000..452c85b
+--- /dev/null
++++ b/windows/tokenmonitor.spec
+@@ -0,0 +1,47 @@
++# -*- mode: python ; coding: utf-8 -*-
++
++block_cipher = None
++
++a = Analysis(
++    ['../src/tokenmon.py'],
++    pathex=['.'],
++    binaries=[],
++    datas=[
++        ('../src', 'src'),                     # código fonte
++        ('../docs', 'docs'),                   # imagens, banner
++        ('../packaging', 'packaging'),         # arquivos adicionais
++    ],
++    hiddenimports=[],
++    hookspath=[],
++    runtime_hooks=[],
++    excludes=[],
++    win_no_prefer_redirects=False,
++    win_private_assemblies=False,
++    cipher=block_cipher,
++    noarchive=False,
++)
++
++pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
++
++exe = EXE(
++    pyz,
++    a.scripts,
++    a.binaries,
++    a.zipfiles,
++    a.datas,
++    name='tokenmonitor',
++    debug=False,
++    bootloader_ignore_signals=False,
++    strip=False,
++    upx=True,
++    console=False,
++)
++
++coll = COLLECT(
++    exe,
++    a.binaries,
++    a.zipfiles,
++    a.datas,
++    strip=False,
++    upx=True,
++    name='tokenmonitor')
+-- 
+2.43.0
+
