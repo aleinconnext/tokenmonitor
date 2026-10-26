@@ -60,7 +60,7 @@ The design is inspired by [codenotch](https://github.com/vinzdg/codenotch) for m
 
 | Requirement | Notes |
 |---|---|
-| Linux with GTK 4 | Tested on Zorin OS 18.1 (GNOME). Any GTK 4 desktop should work. |
+| Linux with GTK 4 | Tested on Zorin OS 18.1 (GNOME), Ubuntu 22.04 LTS and Ubuntu 24.04 LTS. Any GTK 4 desktop should work. |
 | Python 3.10+ | Uses only the standard library plus PyGObject/PyCairo. |
 | `python3-gi`, `python3-gi-cairo`, `gir1.2-gtk-4.0` | GTK bindings. |
 | `wmctrl` | EWMH window control (always-on-top, taskbar skip, geometry). |
@@ -77,11 +77,12 @@ The design is inspired by [codenotch](https://github.com/vinzdg/codenotch) for m
 Download the latest `.deb` from the [releases page](https://github.com/aleinconnext/tokenmonitor/releases/latest) and install it:
 
 ```bash
-sudo dpkg -i tokenmonitor_2.4.0_all.deb
-sudo apt-get -f install   # resolves dependencies, if needed
+sudo apt install ./tokenmonitor_2.4.0_all.deb
 ```
 
 Then launch **Token Monitor** from your application menu, or run `tokenmonitor` in a terminal.
+
+> The package is architecture-independent and was validated on Ubuntu 22.04 LTS and 24.04 LTS, including installation and application startup. On GNOME Wayland the launcher runs through XWayland.
 
 ### Option 2 — Per-user install (no root)
 
@@ -217,6 +218,7 @@ The window check reuses a running instance when there is one and launches the ap
 - **FreeLLMAPI** needs a running Docker compose container named `freellmapi` (or labelled `com.docker.compose.service=freellmapi`) with the router database at `/app/server/data/freeapi.db`. Only models that declare rate limits and have an eligible key contribute to the ring.
 - **GNOME on Wayland** requires XWayland. Native Wayland intentionally forbids clients from positioning themselves or forcing always-on-top; the launcher handles the fallback for you.
 - **Linux only.** codenotch remains the right choice on macOS.
+- Ubuntu 22.04 LTS and 24.04 LTS are supported out of the box. Ubuntu 20.04 does not ship GTK 4 in its default repositories.
 - The interface strings are currently in Portuguese; internationalisation is on the roadmap.
 - Tested on a two-monitor setup at 100 % scale; fractional-scaling reports are welcome.
 
