@@ -57,7 +57,7 @@ spec.loader.exec_module(mod)
 
 res = mod.collect_all()
 by_id = {item.get("id"): item for item in res}
-expected = ("claude", "cursor", "codex")
+expected = ("claude", "cursor", "codex", "freellmapi")
 missing = [key for key in expected if key not in by_id]
 
 for key in expected:
@@ -67,15 +67,53 @@ for key in expected:
     if pct is None:
         print(f"  · {label}: sem dados ({r.get('note') or '—'})")
     else:
-        print(f"  · {label}: {pct:.1f}% · reset {r.get('sub', '—')}")
+        print(f"  · {label}: {pct:.1f}% · {r.get('sub', '—')}")
 
 if missing:
     raise SystemExit(f"adaptadores ausentes: {missing}")
+
+for key in ("claude", "cursor", "codex"):
+    meta = getattr(mod, "TOOL_PANEL_META", {}).get(key) or {}
+    if not meta.get("subtitle") or not meta.get("groups"):
+        raise SystemExit(f"metadados do painel ausentes: {key}")
+print("  · metadados dos painéis Claude/Cursor/Codex")
+
+# The detail panel must never cover the widget. These are the same pure
+# placement rules used by the live window, exercised at the four screen edges.
+# FreeLLMAPI's panel is the tallest; the other three share a shorter shell.
+work = (0, 32, 1920, 1048)
+cases = (
+    ("lateral direita", (1774, 412, 138, 558), True),
+    ("lateral esquerda", (8, 277, 138, 558), True),
+    ("topo horizontal", (738, 40, 444, 183), False),
+    ("base horizontal", (738, 889, 444, 183), False),
+)
+for panel_h, panel_kind in ((566, "FreeLLMAPI"), (300, "genérico")):
+    panel_size = (mod.PANEL_WIDTH, panel_h)
+    for name, widget, vertical in cases:
+        pos = mod.panel_position(widget, panel_size, work, vertical)
+        if pos is None:
+            raise SystemExit(f"painel {panel_kind} sem posição segura: {name}")
+        panel = (pos[0], pos[1], panel_size[0], panel_size[1])
+        if mod.rects_overlap(widget, panel):
+            raise SystemExit(f"painel {panel_kind} sobrepõe o widget: {name} {widget} {panel}")
+        if not (
+            work[0] <= panel[0]
+            and panel[0] + panel[2] <= work[0] + work[2]
+            and work[1] <= panel[1]
+            and panel[1] + panel[3] <= work[1] + work[3]
+        ):
+            raise SystemExit(f"painel {panel_kind} fora da workarea: {name} {panel}")
+        print(f"  · painel {panel_kind} {name}: {pos[0]},{pos[1]} (sem sobreposição)")
+
+if mod.panel_position((0, 0, 100, 100), (mod.PANEL_WIDTH, 566), (0, 0, 300, 300), True) is not None:
+    raise SystemExit("painel não deveria caber em uma workarea minúscula")
+print("  · painel oculto quando não há espaço seguro")
 PY
 then
-  ok "três adaptadores responderam"
+  ok "quatro adaptadores e posicionamento dos painéis"
 else
-  bad "falha na coleta de dados"
+  bad "falha na coleta de dados ou no posicionamento do painel"
 fi
 
 echo "== 3/6  assets do README"
@@ -162,10 +200,10 @@ LINE=$(wmctrl -lG 2>/dev/null | grep "Token Monitor" | head -1)
 if [[ -n "$LINE" ]]; then
   W=$(awk '{print $5}' <<<"$LINE")
   H=$(awk '{print $6}' <<<"$LINE")
-  if [[ "$W $H" == "342 183" || "$W $H" == "138 438" ]]; then
+  if [[ "$W $H" == "444 183" || "$W $H" == "138 558" ]]; then
     ok "janela visível e com geometria esperada (${W}×${H})"
   else
-    bad "geometria inesperada: ${W}×${H} (esperado 342×183 ou 138×438)"
+    bad "geometria inesperada: ${W}×${H} (esperado 444×183 ou 138×558)"
   fi
 else
   bad "janela 'Token Monitor' não encontrada no X11"

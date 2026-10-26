@@ -5,8 +5,10 @@ v2: janela sem moldura, fundo transparente, ancorável nas bordas e
 "sempre no topo" (via XWayland + EWMH, porque o GNOME não expõe
 always-on-top nem layer-shell para apps GTK4).
 
-Anéis: Claude Code · Cursor · Codex. Hover mostra o detalhamento completo.
-Botão direito: ancorar em qualquer borda/canto, alternar topo e sair.
+Anéis: Claude Code · Cursor · Codex · FreeLLMAPI. Hover mostra o
+detalhamento completo; o quarto anel abre um painel lateral com os dados do
+roteador local. Botão direito: ancorar em qualquer borda/canto, alternar topo
+e sair.
 """
 import json
 import math
@@ -50,10 +52,13 @@ RED = (1.000, 0.361, 0.361)
 CARD_ALPHA = 0.72
 MARGIN = 8
 SNAP = 40
-HORIZONTAL_SIZE = (342, 183)
-VERTICAL_SIZE = (138, 438)
+HORIZONTAL_SIZE = (444, 183)
+VERTICAL_SIZE = (138, 558)
 GAUGE_SIZE = 92
 GAUGE_GAP = 10
+PANEL_WIDTH = 380
+PANEL_GAP = 12
+FREELMAPI_URL = "http://127.0.0.1:3001"
 
 # Glifos monocromáticos (Claude, Cursor, Codex/OpenAI), PNG branco 96x96.
 ICONS_B64 = {
@@ -65,6 +70,9 @@ ICONS_B64 = {
     ),
     "codex": (
         "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"
+    ),
+    "freellmapi": (
+        "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"
     ),
 }
 
@@ -89,6 +97,28 @@ window, window.background {{ background: transparent; }}
 .tokenmon-credit .credit-repo {{ color: rgba(150, 160, 180, 0.55); }}
 .tokenmon-credit:hover label {{ color: rgba(233, 237, 245, 0.90); }}
 .tokenmon-credit:hover .credit-repo {{ color: rgba(61, 220, 132, 0.90); }}
+.tm-panel-window, .tm-panel-scroll, .tm-panel-scroll viewport {{ background: transparent; }}
+.tm-panel {{
+  background-color: rgba(17, 19, 24, 0.97);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  padding: 15px 17px 13px 17px;
+}}
+.tm-title {{ font-size: 15px; font-weight: bold; color: #E9EDF5; }}
+.tm-sub {{ font-size: 8px; color: #6F7789; }}
+.tm-section {{ font-size: 8px; font-weight: bold; color: #3DDC84; }}
+.tm-label {{ font-size: 9px; color: #96A0B4; }}
+.tm-value {{ font-size: 9px; color: #E9EDF5; }}
+.tm-big {{ font-size: 25px; font-weight: bold; }}
+.tm-dim {{ font-size: 8px; color: #6C768A; }}
+.tm-green {{ color: #3DDC84; }}
+.tm-warn {{ color: #FFCC4D; }}
+.tm-bad {{ color: #FF5C5C; }}
+.tm-online {{ font-size: 8px; color: #3DDC84; }}
+.tm-offline {{ font-size: 8px; color: #FF5C5C; }}
+.tm-sep {{ background-color: rgba(255, 255, 255, 0.08); }}
+.tm-link {{ font-size: 8px; color: #3DDC84; background: none; background-image: none; border: none; box-shadow: none; padding: 1px 0; min-height: 0; min-width: 0; }}
+.tm-link:hover {{ color: #E9EDF5; background: none; }}
 """
 
 ANCHORS = {
@@ -122,6 +152,15 @@ def color_for(pct: float):
     return GREEN
 
 
+def success_class(pct) -> str:
+    pct = float(pct or 0)
+    if pct >= 95:
+        return "tm-green"
+    if pct >= 80:
+        return "tm-warn"
+    return "tm-bad"
+
+
 def human(n) -> str:
     n = float(n or 0)
     for unit in ("", "k", "M", "B"):
@@ -147,6 +186,52 @@ def short_reset(epoch) -> str:
         d, hh = divmod(h, 24)
         return f"{d}d {hh}h"
     return f"{h}h{m:02d}" if h else f"{m}min"
+
+
+def rects_overlap(a, b) -> bool:
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    return ax < bx + bw and bx < ax + aw and ay < by + bh and by < ay + ah
+
+
+def panel_position(widget, panel_size, work, vertical: bool, gap: int = PANEL_GAP):
+    """Return an (x, y) for the detail panel that never covers the widget.
+
+    The widget sits on a work area. The panel is placed beside it (the default
+    for side-docked layouts) or below it (the default for top/bottom layouts).
+    If that side has no room, the next safest side is tried. Nothing is ever
+    drawn over the widget; if the screen is too small, returns None and the
+    caller keeps the panel hidden.
+    """
+    wx, wy, ww, wh = (int(v) for v in widget)
+    gx, gy, gw, gh = (int(v) for v in work)
+    pw, ph = (int(v) for v in panel_size)
+    if pw <= 0 or ph <= 0 or pw > gw or ph > gh:
+        return None
+
+    preferences = (
+        ("right", "left", "below", "above")
+        if vertical
+        else ("below", "above", "right", "left")
+    )
+    for side in preferences:
+        if side == "right":
+            if wx + ww + gap + pw <= gx + gw:
+                y = max(gy, min(wy + (wh - ph) // 2, gy + gh - ph))
+                return wx + ww + gap, y
+        elif side == "left":
+            if wx - gap - pw >= gx:
+                y = max(gy, min(wy + (wh - ph) // 2, gy + gh - ph))
+                return wx - gap - pw, y
+        elif side == "below":
+            if wy + wh + gap + ph <= gy + gh:
+                x = max(gx, min(wx + (ww - pw) // 2, gx + gw - pw))
+                return x, wy + wh + gap
+        elif side == "above":
+            if wy - gap - ph >= gy:
+                x = max(gx, min(wx + (ww - pw) // 2, gx + gw - pw))
+                return x, wy - gap - ph
+    return None
 
 
 def load_state() -> dict:
@@ -421,6 +506,590 @@ def collect_codex():
     return out
 
 
+# ── fonte: FreeLLMAPI ────────────────────────────────────────────────────────
+# O FreeLLMAPI guarda o próprio estado em SQLite dentro do container. O app lê
+# uma fotografia read-only via `docker exec` e calcula a mesma pressão de janela
+# usada pelo roteador (RPM/RPD/TPM/TPD) para o modelo mais próximo do limite.
+FREELMAPI_JS = r'''
+const { DatabaseSync } = require("node:sqlite");
+const db = new DatabaseSync("/app/server/data/freeapi.db", { readOnly: true });
+const now = Date.now();
+const MIN = 60_000;
+const DAY = 86_400_000;
+
+const all = (sql, ...args) => db.prepare(sql).all(...args);
+const get = (sql, ...args) => db.prepare(sql).get(...args);
+
+const settings = Object.fromEntries(all("SELECT key, value FROM settings").map((r) => [r.key, r.value]));
+const keys = all(
+  "SELECT id, platform, label, status, enabled, base_url, model_scope_json, monthly_request_cap, monthly_token_cap FROM api_keys ORDER BY id"
+);
+const models = all(
+  "SELECT platform, model_id, display_name, rpm_limit, rpd_limit, tpm_limit, tpd_limit, key_id FROM models WHERE enabled = 1"
+);
+
+function parseScope(value) {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return null;
+    const ids = parsed.filter((v) => typeof v === "string" && v.length > 0);
+    return ids.length ? new Set(ids) : null;
+  } catch {
+    return null;
+  }
+}
+
+const eligible = new Map();
+const baseUrlByKey = new Map();
+for (const key of keys) {
+  baseUrlByKey.set(key.id, key.base_url);
+  if (key.enabled !== 1 || (key.status !== "healthy" && key.status !== "unknown")) continue;
+  const list = eligible.get(key.platform) || [];
+  list.push({ ...key, scope: parseScope(key.model_scope_json) });
+  eligible.set(key.platform, list);
+}
+
+const usageRows = all(
+  `SELECT platform, model_id, key_id,
+     SUM(CASE WHEN kind = 'request' AND created_at_ms > ? THEN 1 ELSE 0 END) AS rpm,
+     SUM(CASE WHEN kind = 'request' THEN 1 ELSE 0 END) AS rpd,
+     SUM(CASE WHEN kind = 'tokens' AND created_at_ms > ? THEN tokens ELSE 0 END) AS tpm,
+     SUM(CASE WHEN kind = 'tokens' THEN tokens ELSE 0 END) AS tpd
+   FROM rate_limit_usage
+   WHERE created_at_ms > ?
+   GROUP BY platform, model_id, key_id`,
+  now - MIN,
+  now - MIN,
+  now - DAY
+);
+const usage = new Map();
+for (const row of usageRows) {
+  usage.set(`${row.platform}\u0000${row.model_id}\u0000${row.key_id}`, row);
+}
+
+const WINDOWS = [
+  ["RPM", "rpm", "rpm_limit"],
+  ["RPD", "rpd", "rpd_limit"],
+  ["TPM", "tpm", "tpm_limit"],
+  ["TPD", "tpd", "tpd_limit"],
+];
+
+function windowStats(model, keyId) {
+  const row = usage.get(`${model.platform}\u0000${model.model_id}\u0000${keyId}`) || {
+    rpm: 0,
+    rpd: 0,
+    tpm: 0,
+    tpd: 0,
+  };
+  return WINDOWS.map(([id, usedKey, limitKey]) => ({
+    id,
+    used: Number(row[usedKey] || 0),
+    limit: model[limitKey] == null ? null : Number(model[limitKey]),
+  }));
+}
+
+function pressureOf(windows) {
+  let worst = 0;
+  for (const w of windows) {
+    if (w.limit == null || w.limit <= 0) continue;
+    worst = Math.max(worst, w.used / w.limit);
+  }
+  return worst;
+}
+
+let binding = null;
+const routableModels = new Set();
+for (const model of models) {
+  const limits = WINDOWS.map(([, , limitKey]) => model[limitKey]);
+  if (limits.every((value) => value == null || value <= 0)) continue;
+  const pool = eligible.get(model.platform) || [];
+  let best = null;
+  for (const key of pool) {
+    if (key.scope && !key.scope.has(model.model_id)) continue;
+    if (model.platform === "custom" && model.key_id != null) {
+      const modelBase = baseUrlByKey.get(model.key_id) ?? null;
+      if (modelBase == null ? key.id !== model.key_id : key.base_url !== modelBase) continue;
+    }
+    routableModels.add(`${model.platform}\u0000${model.model_id}`);
+    const windows = windowStats(model, key.id);
+    const pressure = pressureOf(windows);
+    if (best === null || pressure < best.pressure) {
+      best = { pressure, key, windows };
+    }
+    if (best.pressure === 0) break;
+  }
+  if (best === null) continue;
+  const candidate = {
+    platform: model.platform,
+    model_id: model.model_id,
+    display_name: model.display_name || model.model_id,
+    key: best.key,
+    pressure: Math.min(1, best.pressure),
+    raw_pressure: best.pressure,
+    windows: best.windows,
+  };
+  if (
+    binding === null ||
+    candidate.pressure > binding.pressure ||
+    (candidate.pressure === binding.pressure && candidate.raw_pressure > binding.raw_pressure)
+  ) {
+    binding = candidate;
+  }
+}
+
+if (binding && binding.pressure === 0) {
+  // Nothing is above zero: still show a useful window. Prefer the busiest
+  // limited model instead of the first catalogue row.
+  let busiest = null;
+  for (const model of models) {
+    if (WINDOWS.every(([, , limitKey]) => model[limitKey] == null || model[limitKey] <= 0)) continue;
+    const pool = eligible.get(model.platform) || [];
+    for (const key of pool) {
+      if (key.scope && !key.scope.has(model.model_id)) continue;
+      const windows = windowStats(model, key.id);
+      const count = windows.reduce((sum, w) => sum + w.used, 0);
+      if (busiest === null || count > busiest.count) {
+        busiest = {
+          count,
+          platform: model.platform,
+          model_id: model.model_id,
+          display_name: model.display_name || model.model_id,
+          key,
+          pressure: 0,
+          raw_pressure: 0,
+          windows,
+        };
+      }
+    }
+  }
+  if (busiest) binding = busiest;
+}
+
+if (binding) {
+  const preferred = binding.pressure > 0 ? binding.windows : [binding.windows[1], binding.windows[3], binding.windows[0], binding.windows[2]];
+  let worst = null;
+  for (const w of preferred) {
+    if (w.limit == null || w.limit <= 0) continue;
+    if (worst === null || w.used / w.limit > worst.used / worst.limit) worst = w;
+  }
+  binding.window = worst;
+}
+
+const since = new Date(now - DAY).toISOString().slice(0, 19).replace("T", " ");
+const day = get(
+  `SELECT COUNT(*) AS n,
+     SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS ok,
+     SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) AS errors,
+     SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) AS canceled,
+     SUM(input_tokens) AS tin, SUM(output_tokens) AS tout,
+     AVG(CASE WHEN status = 'success' THEN latency_ms END) AS latency,
+     MAX(created_at) AS last
+   FROM requests WHERE created_at >= ?`,
+  since
+);
+const latencies = all(
+  "SELECT latency_ms FROM requests WHERE created_at >= ? AND status = 'success' ORDER BY latency_ms",
+  since
+).map((r) => r.latency_ms || 0);
+const p95 = latencies.length ? latencies[Math.min(latencies.length - 1, Math.floor(latencies.length * 0.95))] : null;
+
+const providers = all(
+  `SELECT platform, COUNT(*) AS n,
+     SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS ok,
+     SUM(input_tokens) AS tin, SUM(output_tokens) AS tout,
+     AVG(CASE WHEN status = 'success' THEN latency_ms END) AS latency
+   FROM requests WHERE created_at >= ? GROUP BY platform ORDER BY n DESC`,
+  since
+);
+
+const month = new Date(now).toISOString().slice(0, 7);
+const monthlyRows = all("SELECT * FROM key_monthly_usage WHERE month = ?", month);
+const monthlyByKey = new Map(monthlyRows.map((r) => [r.key_id, r]));
+const monthly = {
+  requests: monthlyRows.reduce((sum, r) => sum + r.requests, 0),
+  tokens: monthlyRows.reduce((sum, r) => sum + r.tokens, 0),
+};
+
+const cooldowns = all(
+  "SELECT platform, model_id, key_id, expires_at_ms, source FROM rate_limit_cooldowns WHERE expires_at_ms > ? ORDER BY expires_at_ms",
+  now
+);
+
+const lastError = get(
+  "SELECT created_at, platform, model_id, status, error FROM requests WHERE status IN ('error', 'canceled') ORDER BY id DESC LIMIT 1"
+);
+
+const modelsWithLimits = models.filter((m) =>
+  WINDOWS.some(([, , limitKey]) => m[limitKey] != null && m[limitKey] > 0)
+).length;
+const platforms = new Set(keys.filter((k) => k.enabled === 1).map((k) => k.platform));
+
+const toEpoch = (value) => (value ? Date.parse(value.replace(" ", "T") + "Z") : null);
+
+const output = {
+  generated_at: Math.round(now / 1000),
+  online: true,
+  catalog: settings.catalog_applied_version || null,
+  pressure: binding
+    ? {
+        pct: Math.round(binding.pressure * 1000) / 10,
+        raw_pct: Math.round(binding.raw_pressure * 1000) / 10,
+        model: binding.display_name,
+        model_id: binding.model_id,
+        platform: binding.platform,
+        key_id: binding.key.id,
+        key_label: binding.key.label,
+        window: binding.window ? binding.window.id : null,
+        used: binding.window ? binding.window.used : null,
+        limit: binding.window ? binding.window.limit : null,
+        windows: binding.windows,
+        limited_models: routableModels.size,
+      }
+    : null,
+  requests: {
+    total: day.n || 0,
+    ok: day.ok || 0,
+    errors: day.errors || 0,
+    canceled: day.canceled || 0,
+    success_pct: day.n ? Math.round(((day.ok || 0) / day.n) * 1000) / 10 : null,
+    tokens: (day.tin || 0) + (day.tout || 0),
+    input_tokens: day.tin || 0,
+    output_tokens: day.tout || 0,
+    latency_ms: day.latency == null ? null : Math.round(day.latency),
+    p95_ms: p95 == null ? null : Math.round(p95),
+    last: toEpoch(day.last),
+  },
+  providers: providers.map((p) => ({
+    platform: p.platform,
+    requests: p.n,
+    ok: p.ok || 0,
+    success_pct: p.n ? Math.round(((p.ok || 0) / p.n) * 1000) / 10 : null,
+    tokens: (p.tin || 0) + (p.tout || 0),
+    latency_ms: p.latency == null ? null : Math.round(p.latency),
+  })),
+  monthly: {
+    label: month,
+    requests: monthly.requests,
+    tokens: monthly.tokens,
+    resets_at: null, // filled below
+    keys: keys.map((key) => {
+      const row = monthlyByKey.get(key.id);
+      return {
+        id: key.id,
+        label: key.label,
+        platform: key.platform,
+        status: key.status,
+        enabled: key.enabled,
+        requests: row ? row.requests : 0,
+        tokens: row ? row.tokens : 0,
+        request_cap: key.monthly_request_cap > 0 ? key.monthly_request_cap : null,
+        token_cap: key.monthly_token_cap > 0 ? key.monthly_token_cap : null,
+      };
+    }),
+  },
+  models: {
+    enabled: models.length,
+    with_limits: modelsWithLimits,
+    routable_limits: routableModels.size,
+    providers: platforms.size,
+  },
+  cooldowns: {
+    count: cooldowns.length,
+    next: cooldowns.length
+      ? {
+          platform: cooldowns[0].platform,
+          model_id: cooldowns[0].model_id,
+          expires_at: Math.round(cooldowns[0].expires_at_ms / 1000),
+          source: cooldowns[0].source,
+        }
+      : null,
+  },
+  last_error: lastError
+    ? {
+        at: toEpoch(lastError.created_at),
+        platform: lastError.platform,
+        model_id: lastError.model_id,
+        status: lastError.status,
+        error: (lastError.error || "").slice(0, 140),
+      }
+    : null,
+  totals: {
+    requests: Number(settings.total_requests || 0),
+    input_tokens: Number(settings.total_input_tokens || 0),
+    output_tokens: Number(settings.total_output_tokens || 0),
+  },
+};
+
+// Add one calendar month to the current month, not a fixed 32 days.
+{
+  const [y, m] = month.split("-").map(Number);
+  const next = new Date(Date.UTC(y, m, 1));
+  output.monthly.resets_at = Math.floor(next.getTime() / 1000);
+}
+
+console.log(JSON.stringify(output));
+'''
+
+PLATFORM_NAMES = {
+    "ollama": "Ollama",
+    "google": "Google AI Studio",
+    "nvidia": "NVIDIA",
+    "gizmo": "Gizmo",
+    "custom": "Custom",
+    "openrouter": "OpenRouter",
+    "github": "GitHub Models",
+    "groq": "Groq",
+    "mistral": "Mistral",
+    "cerebras": "Cerebras",
+}
+MONTHS_PT = (
+    "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+    "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO",
+)
+# Presentation metadata for the detail panels of the local providers. The
+# FreeLLMAPI panel has its own, richer layout; these three use the same shell
+# and the same non-overlapping placement rules.
+TOOL_PANEL_META = {
+    "claude": {
+        "subtitle": "Claude Code · janela de 5 horas",
+        "metric": "janela de 5 horas",
+        "sub_prefix": "reset em",
+        "source": "claude-monitor + transcrições locais",
+        "hint": "Instale o claude-monitor e abra o Claude Code para gerar dados.",
+        "groups": (
+            ("JANELAS", ("Janela 5h", "Reset 5h", "Janela 7d")),
+            ("ATIVIDADE", ("Sessão", "Burn rate", "Pace", "Confiança", "Contexto")),
+        ),
+    },
+    "cursor": {
+        "subtitle": "Cursor · ciclo de cobrança",
+        "metric": "ciclo de cobrança",
+        "sub_prefix": "ciclo até",
+        "source": "API de uso do Cursor",
+        "hint": "Abra o Cursor e faça login para disponibilizar o token local.",
+        "groups": (
+            ("PLANO E CICLO", ("Plano", "Ciclo", "Reset")),
+            ("USO", ("Uso incluído", "Auto / API")),
+            ("AVISOS", ("Mensagem", "Aviso")),
+        ),
+    },
+    "codex": {
+        "subtitle": "Codex · sessão local mais recente",
+        "metric": "janela primária",
+        "sub_prefix": "reset em",
+        "source": "sessões locais do Codex",
+        "hint": "Use o Codex CLI para criar uma sessão; os logs ficam em ~/.codex/sessions.",
+        "groups": (
+            ("JANELAS", ("Janela primária", "Reset primário", "Janela secundária")),
+            ("SESSÃO", ("Tokens na sessão", "Contexto")),
+        ),
+    },
+}
+_freellmapi_container_cache = {"id": None, "at": 0.0}
+
+
+def pretty_platform(name: str) -> str:
+    name = (name or "").strip()
+    return PLATFORM_NAMES.get(name, name.replace("_", " ").title() or "—")
+
+
+def fmt_latency(ms) -> str:
+    if ms is None:
+        return "—"
+    ms = float(ms)
+    return f"{ms / 1000:.1f}s" if ms >= 1000 else f"{ms:.0f}ms"
+
+
+def clock_label(value) -> str:
+    if not value:
+        return "—"
+    ts = float(value)
+    if ts > 10_000_000_000:
+        ts /= 1000.0
+    t = time.localtime(ts)
+    now = time.localtime()
+    if (t.tm_year, t.tm_yday) == (now.tm_year, now.tm_yday):
+        return time.strftime("%H:%M", t)
+    return time.strftime("%d/%m %H:%M", t)
+
+
+def date_label(value) -> str:
+    if not value:
+        return "—"
+    ts = float(value)
+    if ts > 10_000_000_000:
+        ts /= 1000.0
+    return time.strftime("%d/%m", time.localtime(ts))
+
+
+def month_name(label: str) -> str:
+    try:
+        return MONTHS_PT[int(str(label).split("-")[1]) - 1]
+    except Exception:  # noqa: BLE001
+        return str(label or "—")
+
+
+def pct_class(pct) -> str:
+    pct = float(pct or 0)
+    if pct >= 85:
+        return "tm-bad"
+    if pct >= 60:
+        return "tm-warn"
+    return "tm-green"
+
+
+def _freellmapi_container(force: bool = False):
+    cached = _freellmapi_container_cache
+    now = time.time()
+    if not force and cached["id"] and now - cached["at"] < 60:
+        return cached["id"]
+    if not shutil.which("docker"):
+        return None
+    for args in (
+        ["docker", "ps", "-q", "--filter", "label=com.docker.compose.service=freellmapi"],
+        ["docker", "ps", "-q", "--filter", "name=freellmapi"],
+    ):
+        try:
+            res = subprocess.run(args, capture_output=True, text=True, timeout=4)
+        except Exception:  # noqa: BLE001
+            continue
+        ids = (res.stdout or "").strip().splitlines()
+        if ids:
+            cid = ids[0].strip()
+            cached.update(id=cid, at=now)
+            return cid
+    cached.update(id=None, at=now)
+    return None
+
+
+def _freellmapi_ping() -> bool:
+    try:
+        req = urllib.request.Request(
+            FREELMAPI_URL + "/api/ping",
+            headers={"User-Agent": "tokenmonitor/2.4"},
+        )
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            return json.loads(resp.read().decode()).get("status") == "ok"
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _freellmapi_query():
+    cid = _freellmapi_container()
+    if not cid:
+        return None, "container do FreeLLMAPI não encontrado"
+    try:
+        res = subprocess.run(
+            ["docker", "exec", "-i", cid, "node", "-"],
+            input=FREELMAPI_JS,
+            capture_output=True,
+            text=True,
+            timeout=12,
+        )
+    except subprocess.TimeoutExpired:
+        return None, "consulta ao SQLite do FreeLLMAPI expirou"
+    except Exception as exc:  # noqa: BLE001
+        _freellmapi_container_cache.update(id=None, at=0.0)
+        return None, f"docker exec falhou ({exc.__class__.__name__})"
+    if res.returncode != 0:
+        _freellmapi_container_cache.update(id=None, at=0.0)
+        lines = (res.stderr or "").strip().splitlines()
+        detail = f": {lines[-1][:90]}" if lines else ""
+        return None, f"SQLite do FreeLLMAPI indisponível{detail}"
+    raw = (res.stdout or "").strip()
+    start, end = raw.find("{"), raw.rfind("}")
+    if start < 0 or end <= start:
+        return None, "resposta inválida do consultor"
+    try:
+        return json.loads(raw[start:end + 1]), None
+    except Exception:  # noqa: BLE001
+        return None, "JSON inválido do consultor"
+
+
+def collect_freellmapi():
+    out = {
+        "id": "freellmapi", "label": "FreeLLMAPI", "pct": None,
+        "sub": "—", "detail": [], "note": None, "panel": None,
+    }
+    data, err = _freellmapi_query()
+    if not data:
+        online = _freellmapi_ping()
+        out["note"] = err or "FreeLLMAPI indisponível"
+        out["panel"] = {"online": online, "error": out["note"], "empty": True}
+        return out
+
+    pressure = data.get("pressure") or {}
+    req = data.get("requests") or {}
+    monthly = data.get("monthly") or {}
+    models = data.get("models") or {}
+    cooldowns = data.get("cooldowns") or {}
+    totals = data.get("totals") or {}
+    pct = pressure.get("pct")
+    out["pct"] = None if pct is None else float(pct)
+
+    win = pressure.get("window") or "—"
+    used = pressure.get("used")
+    limit = pressure.get("limit")
+    unit = "dia" if win in ("RPD", "TPD") else "min"
+    if limit:
+        out["sub"] = f"{human(used)}/{human(limit)} {unit}"
+    elif pressure:
+        out["sub"] = f"{pct:.0f}%"
+    else:
+        out["sub"] = "sem limites"
+
+    rows = []
+    if pressure:
+        raw_pct = pressure.get("raw_pct", pct)
+        rows.append(("Pressão", f"{float(raw_pct):.1f}% · {pressure.get('model', '—')}"))
+        if limit:
+            rows.append((
+                "Janela",
+                f"{win} {human(used)}/{human(limit)} · {pretty_platform(pressure.get('platform'))}",
+            ))
+        rows.append(("Chave", str(pressure.get("key_label") or "—")))
+    if req:
+        rows.append((
+            "Últimas 24h",
+            f"{req.get('total', 0)} req · {float(req.get('success_pct') or 0):.1f}% sucesso",
+        ))
+        rows.append((
+            "Tokens 24h",
+            f"{human(req.get('tokens'))} "
+            f"(in {human(req.get('input_tokens'))} / out {human(req.get('output_tokens'))})",
+        ))
+        rows.append((
+            "Latência",
+            f"média {fmt_latency(req.get('latency_ms'))} · p95 {fmt_latency(req.get('p95_ms'))}",
+        ))
+    if monthly:
+        rows.append(("Mês", f"{monthly.get('requests', 0)} req · {human(monthly.get('tokens'))} tok"))
+        rows.append(("Reset do mês", clock_label(monthly.get("resets_at"))))
+    rows += [
+        ("Modelos", f"{models.get('enabled', 0)} · {models.get('routable_limits', 0)} com limites"),
+        ("Chaves", f"{len(monthly.get('keys') or [])} · {cooldowns.get('count', 0)} cooldown(s)"),
+    ]
+    out["detail"] = rows
+    out["note"] = "Pressão = pior janela entre os modelos com chave elegível"
+
+    out["panel"] = {
+        "online": bool(data.get("online", True)),
+        "catalog": data.get("catalog"),
+        "pressure": pressure or None,
+        "requests": req,
+        "providers": data.get("providers") or [],
+        "monthly": monthly,
+        "models": models,
+        "cooldowns": cooldowns,
+        "last_error": data.get("last_error"),
+        "totals": totals,
+        "generated": data.get("generated_at"),
+        "error": None,
+    }
+    return out
+
+
 def collect_all():
     results = {}
 
@@ -433,12 +1102,13 @@ def collect_all():
                 "sub": "—", "detail": [], "note": str(exc),
             }
 
-    threads = [threading.Thread(target=run, args=(fn,)) for fn in (collect_claude, collect_cursor, collect_codex)]
+    adapters = (collect_claude, collect_cursor, collect_codex, collect_freellmapi)
+    threads = [threading.Thread(target=run, args=(fn,)) for fn in adapters]
     for t in threads:
         t.start()
     for t in threads:
         t.join(timeout=30)
-    return [results[fn] for fn in ("collect_claude", "collect_cursor", "collect_codex") if fn in results]
+    return [results[fn] for fn in ("collect_claude", "collect_cursor", "collect_codex", "collect_freellmapi") if fn in results]
 
 
 # ── widgets ───────────────────────────────────────────────────────────────────
@@ -451,6 +1121,7 @@ class Gauge(Gtk.Overlay):
         self.extra = ""
         self.muted = True
         self.icon = None
+        self.icon_texture = None
 
         self.area = Gtk.DrawingArea()
         self.area.set_content_width(size)
@@ -461,6 +1132,7 @@ class Gauge(Gtk.Overlay):
         if icon_b64:
             try:
                 texture = Gdk.Texture.new_from_bytes(GLib.Bytes.new(base64.b64decode(icon_b64)))
+                self.icon_texture = texture
                 self.icon = Gtk.Image.new_from_paintable(texture)
                 self.icon.set_pixel_size(32)
                 self.icon.set_halign(Gtk.Align.CENTER)
@@ -478,19 +1150,6 @@ class Gauge(Gtk.Overlay):
         if self.icon is not None:
             self.icon.set_opacity(0.55 if muted else 1.0)
         self.area.queue_draw()
-
-    def set_details(self, title: str, rows, note: str | None = None):
-        esc = GLib.markup_escape_text
-        lines = [f"<b>{esc(str(title))}</b>"]
-        for key, value in rows:
-            lines.append(f"<b>{esc(str(key))}</b>  {esc(str(value))}")
-        if note:
-            lines.append(f"<i>{esc(str(note))}</i>")
-        markup = "\n".join(lines)
-        self.set_tooltip_markup(markup)
-        self.area.set_tooltip_markup(markup)
-        if self.icon is not None:
-            self.icon.set_tooltip_markup(markup)
 
     def _draw(self, _area, ctx, width, height):
         radius = self.size / 2 - 6
@@ -640,6 +1299,15 @@ class App(Gtk.Application):
         self.drag_ptr = None
         self.drag_bounds = None
         self._last_drag_move = 0.0
+        self.panel = None
+        self.panel_card = None
+        self.panel_scroll = None
+        self.panel_hide_id = None
+        self.panel_size = (PANEL_WIDTH, 300)
+        self._panel_geo = None
+        self._panel_suppressed = False
+        self._panel_tool = None
+        self._fm_texture = None
         if start_anchor:
             self.state["anchor"] = start_anchor
 
@@ -675,7 +1343,12 @@ class App(Gtk.Application):
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=GAUGE_GAP)
         row.set_halign(Gtk.Align.CENTER)
         row.set_valign(Gtk.Align.CENTER)
-        for key, label in (("claude", "Claude Code"), ("cursor", "Cursor"), ("codex", "Codex")):
+        for key, label in (
+            ("claude", "Claude Code"),
+            ("cursor", "Cursor"),
+            ("codex", "Codex"),
+            ("freellmapi", "FreeLLMAPI"),
+        ):
             g = Gauge(label, ICONS_B64.get(key))
             g.set_value(0, "", muted=True)
             self.gauges[key] = g
@@ -699,6 +1372,7 @@ class App(Gtk.Application):
         self.x11 = X11()
         self._build_menu(card)
         self._install_drag(card)
+        self._install_gauge_hover()
 
         self.win.present()
         GLib.timeout_add(400, self._post_map)
@@ -708,16 +1382,21 @@ class App(Gtk.Application):
         self.refresh()
 
     # ── ancoragem / EWMH ─────────────────────────────────────────────────────
-    def _xid(self):
+    def _surface_xid(self, window):
+        if not window:
+            return None
         try:
             from gi.repository import GdkX11
 
-            surface = self.win.get_surface()
+            surface = window.get_surface()
             if isinstance(surface, GdkX11.X11Surface):
                 return int(GdkX11.X11Surface.get_xid(surface))
         except Exception:  # noqa: BLE001
             pass
         return None
+
+    def _xid(self):
+        return self._surface_xid(self.win)
 
     def _wmctrl(self, *args):
         if not shutil.which("wmctrl"):
@@ -823,6 +1502,7 @@ class App(Gtk.Application):
         widget.add_controller(gesture)
 
     def _drag_begin(self, *_args):
+        self._hide_panel_now()
         if not (self.x11 and self.x11.ok):
             return
         pos = self._window_pos()
@@ -912,6 +1592,7 @@ class App(Gtk.Application):
         save_state(self.state)
 
     def _set_orientation(self, vertical: bool):
+        self._hide_panel_now()
         self.vertical = bool(vertical)
         if vertical:
             self.row.set_orientation(Gtk.Orientation.VERTICAL)
@@ -1075,6 +1756,7 @@ class App(Gtk.Application):
             box.append(b)
 
         self.menu.set_child(box)
+        self.menu.connect("closed", self._on_menu_closed)
 
         click = Gtk.GestureClick()
         click.set_button(3)
@@ -1082,10 +1764,20 @@ class App(Gtk.Application):
         parent.add_controller(click)
 
     def _on_right_click(self, gesture, _n, x, y):
+        self._panel_suppressed = True
+        self._hide_panel_now()
         rect = Gdk.Rectangle()
         rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
         self.menu.set_pointing_to(rect)
         self.menu.popup()
+
+    def _on_menu_closed(self, *_):
+        # Keep the panel hidden until a fresh hover. If the pointer is still on a
+        # gauge, the next gauge "leave" will re-arm suppression; otherwise the
+        # user is already outside and the next enter may open the panel.
+        ptr = self.x11.pointer() if self.x11 and self.x11.ok else None
+        if not self._pointer_in_any_gauge(ptr):
+            self._panel_suppressed = False
 
     def _anchor_from_menu(self, name):
         self.menu.popdown()
@@ -1180,9 +1872,732 @@ class App(Gtk.Application):
         a.insert(Pango.attr_weight_new(weight))
         return a
 
+    # ── painel de detalhes (todos os gauges) ────────────────────────────────
+    def _install_gauge_hover(self):
+        for tool_id, gauge in self.gauges.items():
+            def enter(*_args, tid=tool_id):
+                self._cancel_panel_hide()
+                self._show_panel(tid)
+
+            def leave(*_args, tid=tool_id):
+                self._release_menu_suppression(tid)
+                self._schedule_panel_hide(360)
+
+            targets = [gauge, gauge.area]
+            if gauge.icon is not None:
+                targets.append(gauge.icon)
+            for widget in targets:
+                motion = Gtk.EventControllerMotion()
+                motion.connect("enter", enter)
+                motion.connect("leave", leave)
+                widget.add_controller(motion)
+
+    def _fm_icon_texture(self):
+        if self._fm_texture is None:
+            self._fm_texture = Gdk.Texture.new_from_bytes(
+                GLib.Bytes.new(base64.b64decode(ICONS_B64["freellmapi"]))
+            )
+        return self._fm_texture
+
+    def _cancel_panel_hide(self):
+        if self.panel_hide_id:
+            try:
+                GLib.source_remove(self.panel_hide_id)
+            except Exception:  # noqa: BLE001
+                pass
+            self.panel_hide_id = None
+
+    def _schedule_panel_hide(self, delay=300):
+        self._cancel_panel_hide()
+        self.panel_hide_id = GLib.timeout_add(int(delay), self._hide_panel_if_outside)
+
+    @staticmethod
+    def _point_in(rect, x, y):
+        if not rect:
+            return False
+        rx, ry, rw, rh = rect
+        return rx <= x < rx + rw and ry <= y < ry + rh
+
+    def _pointer_in_any_gauge(self, ptr):
+        if not ptr:
+            return False
+        return any(
+            self._point_in(self._gauge_root_rect(tool_id), ptr[0], ptr[1])
+            for tool_id in self.gauges
+        )
+
+    def _release_menu_suppression(self, tool_id):
+        """Re-arm hover only after the pointer leaves the gauge that was used."""
+        if not self._panel_suppressed:
+            return
+        if self.menu is not None and self.menu.get_visible():
+            return
+        ptr = self.x11.pointer() if self.x11 and self.x11.ok else None
+        if ptr and self._point_in(self._gauge_root_rect(tool_id), ptr[0], ptr[1]):
+            return
+        self._panel_suppressed = False
+
+    def _gauge_root_rect(self, tool_id):
+        gauge = self.gauges.get(tool_id)
+        if gauge is None or self.win is None:
+            return None
+        try:
+            ok, rect = gauge.compute_bounds(self.win)
+        except Exception:  # noqa: BLE001
+            return None
+        pos = self._window_pos()
+        if not ok or not pos:
+            return None
+        return (
+            pos[0] + int(rect.origin.x),
+            pos[1] + int(rect.origin.y),
+            int(rect.size.width),
+            int(rect.size.height),
+        )
+
+    def _hide_panel_if_outside(self):
+        self.panel_hide_id = None
+        if self.panel is None or not self.panel.get_visible():
+            return False
+        ptr = self.x11.pointer() if self.x11 and self.x11.ok else None
+        if ptr:
+            if self._point_in(self._panel_geo, ptr[0], ptr[1]):
+                return False
+            for tool_id in self.gauges:
+                if self._point_in(self._gauge_root_rect(tool_id), ptr[0], ptr[1]):
+                    return False
+        self._hide_panel()
+        return False
+
+    def _hide_panel(self):
+        self.panel_hide_id = None
+        if self.panel is not None and self.panel.get_visible():
+            self.panel.set_visible(False)
+        return False
+
+    def _hide_panel_now(self):
+        self._cancel_panel_hide()
+        self._hide_panel()
+
+    def _ensure_panel(self):
+        if self.panel is not None:
+            return
+        panel = Gtk.Window(title="Detalhes")
+        panel.set_default_size(PANEL_WIDTH, 300)
+        panel.set_decorated(False)
+        panel.set_resizable(False)
+        panel.set_modal(False)
+        panel.set_hide_on_close(True)
+        panel.set_transient_for(self.win)
+        panel.set_destroy_with_parent(True)
+        panel.add_css_class("tm-panel-window")
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_has_frame(False)
+        scroll.set_overlay_scrolling(True)
+        scroll.add_css_class("tm-panel-scroll")
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        card.add_css_class("tm-panel")
+        card.set_halign(Gtk.Align.FILL)
+        card.set_valign(Gtk.Align.START)
+        scroll.set_child(card)
+        panel.set_child(scroll)
+
+        motion = Gtk.EventControllerMotion()
+        motion.connect("enter", lambda *_: self._cancel_panel_hide())
+        motion.connect("leave", lambda *_: self._schedule_panel_hide(260))
+        panel.add_controller(motion)
+
+        self.panel = panel
+        self.panel_card = card
+        self.panel_scroll = scroll
+
+    def _mk_label(self, text, css="tm-label", xalign=0.0, wrap=False, ellipsize=None):
+        label = Gtk.Label(label=str(text))
+        label.add_css_class(css)
+        label.set_xalign(float(xalign))
+        if wrap:
+            label.set_wrap(True)
+            label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
+            label.set_max_width_chars(52)
+        if ellipsize is not None:
+            label.set_ellipsize(ellipsize)
+            label.set_max_width_chars(36)
+        return label
+
+    def _panel_section(self, title, right=None):
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.set_margin_top(7)
+        title_lbl = self._mk_label(title, "tm-section")
+        row.append(title_lbl)
+        if right:
+            right_lbl = self._mk_label(right, "tm-dim", xalign=1.0)
+            right_lbl.set_hexpand(True)
+            right_lbl.set_halign(Gtk.Align.END)
+            row.append(right_lbl)
+        self.panel_card.append(row)
+
+    def _panel_sep(self):
+        sep = Gtk.Box()
+        sep.add_css_class("tm-sep")
+        sep.set_size_request(-1, 1)
+        sep.set_margin_top(9)
+        sep.set_margin_bottom(2)
+        self.panel_card.append(sep)
+
+    def _panel_grid(self, rows, columns=2, wrap_values=False):
+        grid = Gtk.Grid(column_spacing=8, row_spacing=3)
+        grid.set_margin_top(3)
+        columns = max(1, int(columns))
+        for index, item in enumerate(rows):
+            label, value = item[0], item[1]
+            value_css = item[2] if len(item) > 2 else "tm-value"
+            column = (index % columns) * 3
+            row = index // columns
+            label_widget = self._mk_label(label, "tm-label")
+            value_widget = self._mk_label(value, value_css, wrap=wrap_values)
+            if wrap_values and columns == 1:
+                label_widget.set_valign(Gtk.Align.START)
+                value_widget.set_hexpand(True)
+            grid.attach(label_widget, column, row, 1, 1)
+            grid.attach(value_widget, column + 1, row, 1, 1)
+            if columns > 1:
+                spacer = Gtk.Box()
+                spacer.set_size_request(12, -1)
+                grid.attach(spacer, column + 2, row, 1, 1)
+        self.panel_card.append(grid)
+        return grid
+
+    def _panel_header(self, title, subtitle, texture, status_text, status_css):
+        head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=9)
+        if texture is not None:
+            icon = Gtk.Image.new_from_paintable(texture)
+            icon.set_pixel_size(24)
+            icon.set_valign(Gtk.Align.START)
+        else:
+            icon = Gtk.Box()
+            icon.set_size_request(24, 24)
+            icon.set_valign(Gtk.Align.START)
+        titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        titles.set_hexpand(True)
+        titles.append(self._mk_label(title, "tm-title"))
+        sub = self._mk_label(subtitle or "", "tm-sub")
+        sub.set_ellipsize(Pango.EllipsizeMode.END)
+        sub.set_max_width_chars(38)
+        titles.append(sub)
+        status = self._mk_label(status_text, status_css)
+        status.set_valign(Gtk.Align.START)
+        head.append(icon)
+        head.append(titles)
+        head.append(status)
+        self.panel_card.append(head)
+
+    @staticmethod
+    def _draw_pressure_bar(_area, ctx, width, height, pct, color):
+        radius = max(1.0, height / 2.0)
+
+        def pill(x, w, r, g, b, a=1.0):
+            w = max(w, height)
+            ctx.set_source_rgba(r, g, b, a)
+            ctx.new_sub_path()
+            ctx.arc(x + radius, radius, radius, math.pi / 2, 3 * math.pi / 2)
+            ctx.arc(x + w - radius, radius, radius, -math.pi / 2, math.pi / 2)
+            ctx.close_path()
+            ctx.fill()
+
+        pill(0, width, 1, 1, 1, 0.08)
+        filled = width * max(0.0, min(100.0, pct)) / 100.0
+        if filled > 0:
+            pill(0, filled, *color)
+
+    def _build_panel_empty(self, tool):
+        data = (tool or {}).get("panel") or {}
+        online = bool(data.get("online"))
+        self._panel_header(
+            "FreeLLMAPI",
+            "roteador local · dados parciais" if data.get("error") else "roteador local",
+            self._fm_icon_texture(),
+            "● online" if online else "● offline",
+            "tm-online" if online else "tm-offline",
+        )
+        self._panel_sep()
+        note = data.get("error") or (tool or {}).get("note") or "Coletando dados do FreeLLMAPI…"
+        self.panel_card.append(self._mk_label(note, "tm-label", wrap=True))
+        if not online:
+            self.panel_card.append(
+                self._mk_label(
+                    "Inicie o FreeLLMAPI em 127.0.0.1:3001 (Docker) para liberar o gauge.",
+                    "tm-dim",
+                    wrap=True,
+                )
+            )
+        elif data.get("error"):
+            self.panel_card.append(
+                self._mk_label(
+                    "O dashboard respondeu, mas o SQLite não pôde ser lido. Verifique o container do FreeLLMAPI.",
+                    "tm-dim",
+                    wrap=True,
+                )
+            )
+        self._panel_sep()
+        foot = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        stamp = self._mk_label("aguardando dados", "tm-dim")
+        stamp.set_hexpand(True)
+        btn = Gtk.Button(label="Abrir dashboard")
+        btn.add_css_class("tm-link")
+        btn.connect("clicked", self._panel_open_dashboard)
+        foot.append(stamp)
+        foot.append(btn)
+        self.panel_card.append(foot)
+
+    def _build_panel(self, data):
+        p = data.get("pressure") or None
+        req = data.get("requests") or {}
+        monthly = data.get("monthly") or {}
+        models = data.get("models") or {}
+        cooldowns = data.get("cooldowns") or {}
+        providers = data.get("providers") or []
+        totals = data.get("totals") or {}
+
+        sub = "roteador local"
+        if data.get("catalog"):
+            sub += f" · catálogo {data['catalog']}"
+        if data.get("error"):
+            sub = "roteador local · dados parciais"
+        self._panel_header(
+            "FreeLLMAPI",
+            sub,
+            self._fm_icon_texture(),
+            "● online" if data.get("online") else "● offline",
+            "tm-online" if data.get("online") else "tm-offline",
+        )
+        if data.get("error"):
+            err = self._mk_label(data["error"], "tm-warn", wrap=True)
+            err.set_margin_top(6)
+            self.panel_card.append(err)
+        self._panel_sep()
+
+        self._panel_section(
+            "PRESSÃO DE LIMITE",
+            f"{p.get('limited_models', 0)} modelos" if p else None,
+        )
+        if p:
+            raw = float(p.get("raw_pct", p.get("pct") or 0))
+            css = pct_class(raw)
+            head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            big = self._mk_label(f"{raw:.0f}%", "tm-big")
+            big.add_css_class(css)
+            big.set_valign(Gtk.Align.START)
+            body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+            body.set_hexpand(True)
+            model = self._mk_label(
+                p.get("model") or p.get("model_id") or "—",
+                "tm-value",
+                ellipsize=Pango.EllipsizeMode.END,
+            )
+            body.append(model)
+            win = p.get("window") or "—"
+            limit = p.get("limit")
+            unit = "24 h" if win in ("RPD", "TPD") else "1 min"
+            body.append(
+                self._mk_label(
+                    f"{win} {human(p.get('used'))}/{human(limit) if limit else '—'} · {unit}",
+                    "tm-label",
+                )
+            )
+            body.append(
+                self._mk_label(
+                    f"{pretty_platform(p.get('platform'))} · {p.get('key_label', '—')}",
+                    "tm-dim",
+                    ellipsize=Pango.EllipsizeMode.END,
+                )
+            )
+            head.append(big)
+            head.append(body)
+            self.panel_card.append(head)
+
+            bar = Gtk.DrawingArea()
+            bar.set_content_height(5)
+            bar.set_hexpand(True)
+            bar.set_margin_top(7)
+            bar.set_margin_bottom(4)
+            bar.set_draw_func(
+                self._draw_pressure_bar,
+                min(100.0, raw),
+                color_for(min(100.0, raw)),
+            )
+            self.panel_card.append(bar)
+
+            windows = []
+            for item in p.get("windows") or []:
+                windows.append((
+                    item.get("id", "—"),
+                    f"{human(item.get('used'))}/{human(item.get('limit')) if item.get('limit') else '—'}",
+                ))
+            if windows:
+                self._panel_grid(windows, columns=2)
+        else:
+            self.panel_card.append(
+                self._mk_label("Nenhum modelo roteável declara limites.", "tm-label", wrap=True)
+            )
+
+        self._panel_section("ÚLTIMAS 24 H", f"{int(req.get('total') or 0)} req" if req else None)
+        if req and req.get("total"):
+            ok = float(req.get("success_pct") or 0)
+            pairs = [
+                ("Requisições", str(int(req.get("total") or 0))),
+                ("Sucesso", f"{ok:.1f}%", success_class(ok)),
+                ("Tokens", human(req.get("tokens"))),
+                ("Latência", fmt_latency(req.get("latency_ms"))),
+                ("Entrada", human(req.get("input_tokens"))),
+                ("P95", fmt_latency(req.get("p95_ms"))),
+                ("Saída", human(req.get("output_tokens"))),
+                ("Última", clock_label(req.get("last"))),
+            ]
+            self._panel_grid(pairs, columns=2)
+            errors = int(req.get("errors") or 0)
+            canceled = int(req.get("canceled") or 0)
+            if errors or canceled:
+                extra = []
+                if errors:
+                    extra.append(f"{errors} erros")
+                if canceled:
+                    extra.append(f"{canceled} cancelada" + ("s" if canceled > 1 else ""))
+                extra_lbl = self._mk_label(" · ".join(extra), "tm-dim")
+                extra_lbl.set_margin_top(3)
+                self.panel_card.append(extra_lbl)
+        else:
+            self.panel_card.append(
+                self._mk_label("Sem requisições nas últimas 24 h.", "tm-label")
+            )
+
+        if providers:
+            self._panel_section("POR PROVEDOR", "24 h")
+            grid = Gtk.Grid(column_spacing=8, row_spacing=3)
+            grid.set_margin_top(3)
+            for index, provider in enumerate(providers):
+                name = self._mk_label(pretty_platform(provider.get("platform")), "tm-label")
+                name.set_width_chars(14)
+                ok = float(provider.get("success_pct") or 0)
+                usage = f"{provider.get('requests', 0)} req · {human(provider.get('tokens'))}"
+                usage_lbl = self._mk_label(usage, "tm-dim", xalign=1.0)
+                usage_lbl.set_hexpand(True)
+                usage_lbl.set_halign(Gtk.Align.END)
+                pct_lbl = self._mk_label(f"{ok:.0f}%", success_class(ok), xalign=1.0)
+                grid.attach(name, 0, index, 1, 1)
+                grid.attach(usage_lbl, 1, index, 1, 1)
+                grid.attach(pct_lbl, 2, index, 1, 1)
+            self.panel_card.append(grid)
+
+        monthly_keys = monthly.get("keys") or []
+        if monthly:
+            self._panel_section(
+                f"CHAVES · {month_name(monthly.get('label'))}",
+                f"{monthly.get('requests', 0)} req · {human(monthly.get('tokens'))}",
+            )
+            if monthly_keys:
+                grid = Gtk.Grid(column_spacing=8, row_spacing=3)
+                grid.set_margin_top(3)
+                for index, key in enumerate(monthly_keys):
+                    healthy = bool(key.get("enabled")) and key.get("status") in ("healthy", "unknown")
+                    dot_css = "tm-green" if healthy else ("tm-warn" if key.get("enabled") else "tm-dim")
+                    dot = self._mk_label("●", dot_css)
+                    name = self._mk_label(
+                        key.get("label") or pretty_platform(key.get("platform")),
+                        "tm-value",
+                    )
+                    name.set_width_chars(14)
+                    usage = f"{key.get('requests', 0)} req · {human(key.get('tokens'))} tok"
+                    if key.get("request_cap"):
+                        usage += f" / {human(key['request_cap'])}"
+                    if key.get("token_cap"):
+                        usage += f" / {human(key['token_cap'])} tok"
+                    usage_lbl = self._mk_label(usage, "tm-dim", xalign=1.0)
+                    usage_lbl.set_hexpand(True)
+                    usage_lbl.set_halign(Gtk.Align.END)
+                    grid.attach(dot, 0, index, 1, 1)
+                    grid.attach(name, 1, index, 1, 1)
+                    grid.attach(usage_lbl, 2, index, 1, 1)
+                self.panel_card.append(grid)
+            reset = self._mk_label(
+                f"reset em {clock_label(monthly.get('resets_at'))}",
+                "tm-dim",
+            )
+            reset.set_margin_top(3)
+            self.panel_card.append(reset)
+        else:
+            self.panel_card.append(self._mk_label("Sem uso neste mês.", "tm-label"))
+
+        self._panel_section("ROTEADOR")
+        cooldown_count = int(cooldowns.get("count") or 0)
+        cooldown_text = "nenhum"
+        if cooldown_count:
+            next_cd = cooldowns.get("next") or {}
+            cooldown_text = f"{cooldown_count} · até {clock_label(next_cd.get('expires_at'))}"
+        self._panel_grid(
+            [
+                ("Modelos", f"{models.get('enabled', 0)} · {models.get('routable_limits', 0)} com limites"),
+                ("Provedores", str(models.get("providers", 0))),
+                ("Cooldowns", cooldown_text),
+                (
+                    "Desde o início",
+                    f"{int(totals.get('requests') or 0)} req · "
+                    f"{human((totals.get('input_tokens') or 0) + (totals.get('output_tokens') or 0))} tok",
+                ),
+            ],
+            columns=1,
+        )
+        last_error = data.get("last_error")
+        if last_error:
+            message = str(last_error.get("error") or last_error.get("status") or "erro").strip()
+            if len(message) > 78:
+                message = message[:77] + "…"
+            err = self._mk_label(
+                f"último erro · {clock_label(last_error.get('at'))} · "
+                f"{pretty_platform(last_error.get('platform'))} · {message}",
+                "tm-dim",
+                wrap=True,
+            )
+            err.set_margin_top(3)
+            self.panel_card.append(err)
+
+        self._panel_sep()
+        foot = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        stamp = self._mk_label(
+            f"SQLite local · {clock_label(data.get('generated'))}",
+            "tm-dim",
+        )
+        stamp.set_hexpand(True)
+        btn = Gtk.Button(label="Abrir dashboard")
+        btn.add_css_class("tm-link")
+        btn.set_tooltip_text(FREELMAPI_URL)
+        try:
+            btn.set_cursor(Gdk.Cursor.new_from_name("pointer", None))
+        except Exception:  # noqa: BLE001
+            pass
+        btn.connect("clicked", self._panel_open_dashboard)
+        foot.append(stamp)
+        foot.append(btn)
+        self.panel_card.append(foot)
+
+    def _detail_sections(self, tool):
+        """Group the collector's flat detail rows into readable sections."""
+        meta = TOOL_PANEL_META.get(tool.get("id")) or {}
+        rows = [tuple(row) for row in (tool.get("detail") or [])]
+        groups = meta.get("groups") or ()
+        if not groups:
+            return [("DETALHES", rows)] if rows else []
+        sections = []
+        remaining = list(rows)
+        for title, labels in groups:
+            wanted = set(labels)
+            selected = [row for row in remaining if row[0] in wanted]
+            if selected:
+                sections.append((title, selected))
+                remaining = [row for row in remaining if row[0] not in wanted]
+        if remaining:
+            sections.append(("OUTROS", remaining))
+        return sections
+
+    def _build_tool_panel(self, tool):
+        """Same visual shell for Claude Code, Cursor and Codex."""
+        meta = TOOL_PANEL_META.get(tool.get("id")) or {}
+        online = tool.get("pct") is not None
+        gauge = self.gauges.get(tool.get("id"))
+        texture = gauge.icon_texture if gauge is not None else None
+        self._panel_header(
+            tool.get("label") or "?",
+            meta.get("subtitle") or "dados locais",
+            texture,
+            "● ativo" if online else "● sem dados",
+            "tm-online" if online else "tm-dim",
+        )
+        self._panel_sep()
+
+        pct = tool.get("pct")
+        if pct is not None:
+            raw = float(pct)
+            self._panel_section("USO ATUAL")
+            head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            big = self._mk_label(f"{raw:.0f}%", "tm-big")
+            big.add_css_class(pct_class(raw))
+            big.set_valign(Gtk.Align.START)
+            body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+            body.set_hexpand(True)
+            body.append(self._mk_label(meta.get("metric") or "uso do plano", "tm-value"))
+            sub = tool.get("sub") or "—"
+            body.append(
+                self._mk_label(
+                    f"{meta.get('sub_prefix') or 'reset em'} {sub}",
+                    "tm-label",
+                )
+            )
+            head.append(big)
+            head.append(body)
+            self.panel_card.append(head)
+
+            bar = Gtk.DrawingArea()
+            bar.set_content_height(5)
+            bar.set_hexpand(True)
+            bar.set_margin_top(7)
+            bar.set_margin_bottom(4)
+            bar.set_draw_func(
+                self._draw_pressure_bar,
+                min(100.0, raw),
+                color_for(min(100.0, raw)),
+            )
+            self.panel_card.append(bar)
+        else:
+            self._panel_section("SEM DADOS")
+            note = tool.get("note") or "Nenhum dado disponível."
+            self.panel_card.append(self._mk_label(note, "tm-warn", wrap=True))
+            if meta.get("hint"):
+                hint = self._mk_label(meta["hint"], "tm-dim", wrap=True)
+                hint.set_margin_top(3)
+                self.panel_card.append(hint)
+
+        for title, rows in self._detail_sections(tool):
+            self._panel_section(title)
+            self._panel_grid(rows, columns=1, wrap_values=True)
+
+        note = tool.get("note")
+        if online and note:
+            note_lbl = self._mk_label(note, "tm-dim", wrap=True)
+            note_lbl.set_margin_top(5)
+            self.panel_card.append(note_lbl)
+
+        self._panel_sep()
+        stamp = self._mk_label(
+            f"{meta.get('source') or 'dados locais'} · {clock_label(time.time())}",
+            "tm-dim",
+        )
+        self.panel_card.append(stamp)
+
+    def _active_tool(self):
+        return next((item for item in self.tools if item.get("id") == self._panel_tool), None)
+
+    def _update_panel(self):
+        if self.panel_card is None:
+            return
+        tool = self._active_tool()
+        if tool is None:
+            return
+        card = self.panel_card
+        child = card.get_first_child()
+        while child is not None:
+            card.remove(child)
+            child = card.get_first_child()
+
+        if tool.get("id") == "freellmapi":
+            data = tool.get("panel")
+            if data:
+                self._build_panel(data)
+            else:
+                self._build_panel_empty(tool)
+        else:
+            self._build_tool_panel(tool)
+
+        try:
+            _minimum, natural, _baseline, _baseline2 = card.measure(Gtk.Orientation.VERTICAL, PANEL_WIDTH)
+        except Exception:  # noqa: BLE001
+            natural = 560
+        pos = self._window_pos() or (0, 0)
+        geo = self._workarea_at(pos[0], pos[1]) or self._workarea()
+        available = max(200, (geo.height if geo else 1048) - 2 * MARGIN - 8)
+        height = max(180, min(int(natural), available))
+        self.panel_size = (PANEL_WIDTH, height)
+        if self.panel is not None:
+            self.panel.set_default_size(PANEL_WIDTH, height)
+        if self.panel is not None and self.panel.get_visible():
+            GLib.timeout_add(30, self._place_panel)
+            GLib.timeout_add(180, self._place_panel)
+
+    def _show_panel(self, tool_id=None):
+        if tool_id is not None:
+            self._panel_tool = tool_id
+        if self._panel_tool is None or self.win is None or self.dragging or self._panel_suppressed:
+            return
+        tool = self._active_tool()
+        if tool is None:
+            return
+        self._cancel_panel_hide()
+        self._ensure_panel()
+        self.panel.set_title(f"{tool.get('label') or 'Detalhes'} - detalhes")
+        self._update_panel()
+        if not self.panel.get_visible():
+            self._panel_geo = None
+            self.panel.realize()
+            surface = self.panel.get_surface()
+            if surface is not None:
+                surface.set_input_region(cairo.Region())
+            self.panel.set_opacity(0.0)
+            self.panel.present()
+            xid = self._surface_xid(self.panel)
+            if xid:
+                self._wmctrl("-i", "-r", hex(xid), "-b", "add,above,skip_taskbar")
+            GLib.timeout_add(700, self._check_panel_placed)
+        GLib.timeout_add(60, self._place_panel)
+        GLib.timeout_add(240, self._place_panel)
+
+    def _check_panel_placed(self):
+        if self.panel is not None and self.panel.get_visible() and self._panel_geo is None:
+            self._hide_panel_now()
+        return False
+
+    def _place_panel(self):
+        if not self.panel or not self.panel.get_visible():
+            return False
+        pos = self._window_pos()
+        if not pos:
+            return False
+        win_w = self.win.get_width() or (VERTICAL_SIZE[0] if self.vertical else HORIZONTAL_SIZE[0])
+        win_h = self.win.get_height() or (VERTICAL_SIZE[1] if self.vertical else HORIZONTAL_SIZE[1])
+        panel_w = self.panel.get_width()
+        panel_h = self.panel.get_height()
+        if panel_w <= 20 or panel_h <= 20:
+            panel_w, panel_h = self.panel_size
+        geo = self._workarea_at(pos[0] + win_w // 2, pos[1] + win_h // 2) or self._workarea()
+        if not geo:
+            return False
+        target = panel_position(
+            (pos[0], pos[1], win_w, win_h),
+            (panel_w, panel_h),
+            (geo.x, geo.y, geo.width, geo.height),
+            self.vertical,
+        )
+        if not target:
+            self._hide_panel_now()
+            return False
+        x, y = target
+        xid = self._surface_xid(self.panel)
+        if not xid:
+            return False
+        self._wmctrl("-i", "-r", hex(xid), "-b", "add,above,skip_taskbar")
+        self._wmctrl(
+            "-i", "-r", hex(xid), "-e",
+            f"0,{int(x)},{int(y)},{int(panel_w)},{int(panel_h)}",
+        )
+        if self.x11 and self.x11.ok:
+            self.x11.move(xid, x, y)
+        surface = self.panel.get_surface()
+        if surface is not None:
+            full_region = cairo.Region(
+                cairo.RectangleInt(0, 0, int(panel_w), int(panel_h))
+            )
+            surface.set_input_region(full_region)
+        self._panel_geo = (int(x), int(y), int(panel_w), int(panel_h))
+        self.panel.set_opacity(1.0)
+        return False
+
+    def _panel_open_dashboard(self, *_args):
+        self._hide_panel_now()
+        self.open_dashboard()
+
     # ── ações ────────────────────────────────────────────────────────────────
     def open_dashboard(self, *_):
-        subprocess.Popen(["xdg-open", "http://localhost:3001"],
+        subprocess.Popen(["xdg-open", FREELMAPI_URL],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def open_tui(self, *_):
@@ -1216,13 +2631,10 @@ class App(Gtk.Application):
                 continue
             has = tool.get("pct") is not None
             g.set_value(tool.get("pct") or 0, tool.get("sub") or "", muted=not has)
-            g.set_details(
-                tool.get("label", "?"),
-                tool.get("detail") or [("Status", "sem dados")],
-                tool.get("note"),
-            )
             parts.append(f"{tool.get('label')} " + ("—" if not has else f"{tool['pct']:.0f}%"))
         self.status.set_text("  ·  ".join(parts))
+        if self.panel is not None and self.panel.get_visible():
+            self._update_panel()
         return False
 
 

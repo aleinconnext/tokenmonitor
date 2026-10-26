@@ -20,7 +20,7 @@ user-install:
 
 autostart:
 	mkdir -p $(HOME)/.config/autostart
-	printf '[Desktop Entry]\nType=Application\nName=Token Monitor\nComment=Usage monitor for Claude Code, Cursor and Codex\nExec=sh -c "sleep 4; exec $(HOME)/.local/bin/tokenmonitor"\nIcon=tokenmonitor\nTerminal=false\nX-GNOME-Autostart-enabled=true\n' > $(HOME)/.config/autostart/tokenmonitor.desktop
+	printf '[Desktop Entry]\nType=Application\nName=Token Monitor\nComment=Usage monitor for Claude Code, Cursor, Codex and FreeLLMAPI\nExec=sh -c "sleep 4; exec $(HOME)/.local/bin/tokenmonitor"\nIcon=tokenmonitor\nTerminal=false\nX-GNOME-Autostart-enabled=true\n' > $(HOME)/.config/autostart/tokenmonitor.desktop
 
 uninstall:
 	rm -f $(HOME)/.local/bin/tokenmonitor

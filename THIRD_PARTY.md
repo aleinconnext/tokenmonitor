@@ -19,6 +19,15 @@ comes from [Octicons](https://github.com/primer/octicons), released under the
 MIT License. It is a trademark of GitHub, Inc. and is used only to link to the
 project's repository.
 
+## FreeLLMAPI glyph
+
+The fourth gauge glyph embedded in `src/tokenmon.py` was derived from the
+favicon shipped with
+[FreeLLMAPI](https://github.com/tashfeenahmed/freellmapi), released under the
+MIT License (Copyright © 2026 Tashfeen Ahmed). FreeLLMAPI is an independent
+project; tokenmonitor only reads its local usage database and is not affiliated
+with it.
+
 ## Design inspiration
 
 The notch-like presentation and the idea of ambient usage rings come from
