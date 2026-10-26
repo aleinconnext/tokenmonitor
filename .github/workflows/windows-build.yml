@@ -1,0 +1,61 @@
+name: Build & Release Windows Installer
+
+on:
+  push:
+    tags:
+      - 'v*'                     # dispara a cada nova tag vX.Y.Z
+  workflow_dispatch: {}           # permite disparo manual
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write            # necessário para criar/releases
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0         # traz todas as tags
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: 'x64'
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller==6.10.0
+          pip install https://github.com/tschoonj/pygobject-win-build/releases/download/pygobject-3.48.2/pygobject-3.48.2-cp312-cp312-win_amd64.whl
+
+      - name: Download GTK runtime
+        run: |
+          mkdir windows\gtk
+          curl -L -o gtk.zip https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment/releases/download/gtk-4.14.0/gtk-4.14.0-win64.zip
+          tar -xf gtk.zip -C windows\gtk --strip-components=1
+          del gtk.zip
+
+      - name: Build executable with PyInstaller
+        run: |
+          cd windows
+          pyinstaller tokenmonitor.spec
+          cd ..
+
+      - name: Build installer (.exe) with Inno Setup
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows\tokenmonitor.iss
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          RELEASE_NAME="TokenMonitor ${TAG_NAME#v} – Windows"
+          gh release create "${TAG_NAME}" "windows/TokenMonitor-${TAG_NAME#v}-win.exe" \
+            --title "${RELEASE_NAME}" \
+            --notes "Release automática gerada pelo workflow GitHub Actions."
