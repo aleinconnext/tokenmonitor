@@ -216,7 +216,7 @@ make run
 
 <p align="center">
   <a href="https://github.com/aleinconnext/tokenmonitor" title="aleinconnext/tokenmonitor">
-    <img src="docs/author.png" height="44" alt="Alessandro Gonçalves · Software Engineer · aleinconnext/tokenmonitor">
+    <img src="docs/author.png" width="500" alt="Alessandro Gonçalves · Software Engineer · aleinconnext/tokenmonitor">
   </a>
 </p>
 
