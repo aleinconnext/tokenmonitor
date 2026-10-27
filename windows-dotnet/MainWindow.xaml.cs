@@ -30,11 +30,12 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Topmost = _preferences.Topmost;
+        Topmost = true;
         CreateGauges();
         CreditIcon.Source = IconAssets.Load("github");
         BuildContextMenu();
         Loaded += async (_, _) => { RestorePlacement(); await RefreshDataAsync(); };
+        Activated += (_, _) => Topmost = true;
         _refreshTimer.Tick += async (_, _) => await RefreshDataAsync();
         _hidePopupTimer.Tick += (_, _) => HidePopupIfOutside();
         PreviewMouseLeftButtonDown += BeginDragTracking;
@@ -114,15 +115,6 @@ public partial class MainWindow : Window
         var startup = new MenuItem { Header = "Iniciar com o Windows", IsChecked = UserPreferencesStore.StartsWithWindows, IsCheckable = true };
         startup.Click += (_, _) => UserPreferencesStore.SetStartsWithWindows(startup.IsChecked);
         menu.Items.Add(startup);
-        menu.Items.Add(new Separator());
-        var above = new MenuItem { Header = "Sempre no topo", IsChecked = Topmost, IsCheckable = true };
-        above.Click += (_, _) =>
-        {
-            Topmost = above.IsChecked;
-            _preferences.Topmost = Topmost;
-            SavePlacement(_anchor, Left, Top);
-        };
-        menu.Items.Add(above);
         menu.Items.Add(new Separator());
         var exit = new MenuItem { Header = "Sair" };
         exit.Click += (_, _) => Close();
