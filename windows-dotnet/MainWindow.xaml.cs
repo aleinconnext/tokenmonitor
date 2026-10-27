@@ -19,6 +19,10 @@ public partial class MainWindow : Window
     private readonly DataCollector _collector = new();
     private readonly Dictionary<string, GaugeData> _data = new();
     private bool _refreshing;
+    private DispatcherTimer? _orientationTimer;
+    private DateTime _orientationAnimationStart;
+    private double _orientationStartWidth, _orientationStartHeight, _orientationStartLeft, _orientationStartTop;
+    private double _orientationTargetWidth, _orientationTargetHeight, _orientationTargetLeft, _orientationTargetTop;
 
     public MainWindow()
     {
@@ -26,7 +30,7 @@ public partial class MainWindow : Window
         CreateGauges();
         CreditIcon.Source = IconAssets.Load("github");
         BuildContextMenu();
-        Loaded += async (_, _) => { ApplyOrientation(false); SnapToAnchor("top-right"); await RefreshDataAsync(); };
+        Loaded += async (_, _) => { ApplyOrientation(false); SnapToAnchor("top-right", false); await RefreshDataAsync(); };
         _refreshTimer.Tick += async (_, _) => await RefreshDataAsync();
         _hidePopupTimer.Tick += (_, _) => HidePopupIfOutside();
         PreviewMouseLeftButtonDown += BeginDragTracking;
@@ -59,9 +63,14 @@ public partial class MainWindow : Window
 
     private void ApplyOrientation(bool vertical)
     {
-        _vertical = vertical;
-        Height = vertical ? 480 : 165;
+        ConfigureOrientation(vertical);
         Width = vertical ? 110 : 355;
+        Height = vertical ? 480 : 165;
+    }
+
+    private void ConfigureOrientation(bool vertical)
+    {
+        _vertical = vertical;
         Card.Padding = vertical
             ? new Thickness(14, 12, 14, 10)
             : new Thickness(14, 12, 14, 10);
@@ -112,19 +121,17 @@ public partial class MainWindow : Window
         menu.Items.Add(item);
     }
 
-    private void SnapToAnchor(string anchor)
+    private void SnapToAnchor(string anchor, bool animate = true)
     {
         _anchor = anchor;
         var vertical = anchor is "left" or "right" || (_vertical && anchor == "free");
-        ApplyOrientation(vertical);
         var area = SystemParameters.WorkArea;
         var margin = 12.0;
-        if (anchor.Contains("left")) Left = area.Left + margin;
-        else if (anchor.Contains("right")) Left = area.Right - Width - margin;
-        else Left = Math.Max(area.Left, Math.Min(Left, area.Right - Width));
-        if (anchor.StartsWith("top")) Top = area.Top + margin;
-        else if (anchor.StartsWith("bottom")) Top = area.Bottom - Height - margin;
-        else Top = Math.Max(area.Top, Math.Min(Top, area.Bottom - Height));
+        var targetWidth = vertical ? 110 : 355;
+        var targetHeight = vertical ? 480 : 165;
+        var targetLeft = anchor.Contains("left") ? area.Left + margin : anchor.Contains("right") ? area.Right - targetWidth - margin : Math.Max(area.Left, Math.Min(Left, area.Right - targetWidth));
+        var targetTop = anchor.StartsWith("top") ? area.Top + margin : anchor.StartsWith("bottom") ? area.Bottom - targetHeight - margin : Math.Max(area.Top, Math.Min(Top, area.Bottom - targetHeight));
+        if (animate) AnimateOrientation(vertical, targetLeft, targetTop); else { ApplyOrientation(vertical); Left = targetLeft; Top = targetTop; }
         // Os quatro cantos permanecem horizontais, como na versão Linux.
         // A orientação vertical só é aplicada por uma ancoragem lateral
         // explícita ou após o usuário encaixar o widget em uma lateral.
@@ -175,16 +182,16 @@ public partial class MainWindow : Window
 
         if (nearest <= snap && (left == nearest || right == nearest))
         {
-            ApplyOrientation(true);
-            Left = left <= right ? area.Left + margin : area.Right - Width - margin;
-            Top = Math.Max(area.Top + margin, Math.Min(Top, area.Bottom - Height - margin));
+            var targetLeft = left <= right ? area.Left + margin : area.Right - 110 - margin;
+            var targetTop = Math.Max(area.Top + margin, Math.Min(Top, area.Bottom - 480 - margin));
+            AnimateOrientation(true, targetLeft, targetTop);
             _anchor = left <= right ? "left" : "right";
         }
         else if (nearest <= snap)
         {
-            ApplyOrientation(false);
-            Top = top <= bottom ? area.Top + margin : area.Bottom - Height - margin;
-            Left = Math.Max(area.Left + margin, Math.Min(Left, area.Right - Width - margin));
+            var targetTop = top <= bottom ? area.Top + margin : area.Bottom - 165 - margin;
+            var targetLeft = Math.Max(area.Left + margin, Math.Min(Left, area.Right - 355 - margin));
+            AnimateOrientation(false, targetLeft, targetTop);
             _anchor = top <= bottom ? "top" : "bottom";
         }
         else
@@ -194,6 +201,40 @@ public partial class MainWindow : Window
             _anchor = "free";
         }
     }
+
+    private void AnimateOrientation(bool vertical, double targetLeft, double targetTop)
+    {
+        _orientationTimer?.Stop();
+        DetailsPopup.IsOpen = false;
+        _orientationStartWidth = Width;
+        _orientationStartHeight = Height;
+        _orientationStartLeft = Left;
+        _orientationStartTop = Top;
+        _orientationTargetWidth = vertical ? 110 : 355;
+        _orientationTargetHeight = vertical ? 480 : 165;
+        _orientationTargetLeft = targetLeft;
+        _orientationTargetTop = targetTop;
+        ConfigureOrientation(vertical);
+        _orientationAnimationStart = DateTime.UtcNow;
+        _orientationTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        _orientationTimer.Tick += OrientationAnimationTick;
+        _orientationTimer.Start();
+    }
+
+    private void OrientationAnimationTick(object? sender, EventArgs e)
+    {
+        var progress = Math.Clamp((DateTime.UtcNow - _orientationAnimationStart).TotalMilliseconds / 220.0, 0, 1);
+        var eased = 1 - Math.Pow(1 - progress, 2);
+        Width = Lerp(_orientationStartWidth, _orientationTargetWidth, eased);
+        Height = Lerp(_orientationStartHeight, _orientationTargetHeight, eased);
+        Left = Lerp(_orientationStartLeft, _orientationTargetLeft, eased);
+        Top = Lerp(_orientationStartTop, _orientationTargetTop, eased);
+        if (progress < 1) return;
+        _orientationTimer?.Stop();
+        Width = _orientationTargetWidth; Height = _orientationTargetHeight; Left = _orientationTargetLeft; Top = _orientationTargetTop;
+    }
+
+    private static double Lerp(double from, double to, double amount) => from + ((to - from) * amount);
 
     private async Task RefreshDataAsync()
     {
