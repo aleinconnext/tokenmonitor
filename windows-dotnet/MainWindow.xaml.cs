@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private bool _trackingDrag;
     private readonly DataCollector _collector = new();
     private readonly Dictionary<string, GaugeData> _data = new();
+    private readonly UserPreferences _preferences = UserPreferencesStore.Load();
     private bool _refreshing;
     private DispatcherTimer? _orientationTimer;
     private DateTime _orientationAnimationStart;
@@ -30,12 +31,13 @@ public partial class MainWindow : Window
         CreateGauges();
         CreditIcon.Source = IconAssets.Load("github");
         BuildContextMenu();
-        Loaded += async (_, _) => { ApplyOrientation(false); SnapToAnchor("top-right", false); await RefreshDataAsync(); };
+        Loaded += async (_, _) => { RestorePlacement(); await RefreshDataAsync(); };
         _refreshTimer.Tick += async (_, _) => await RefreshDataAsync();
         _hidePopupTimer.Tick += (_, _) => HidePopupIfOutside();
         PreviewMouseLeftButtonDown += BeginDragTracking;
         PreviewMouseMove += TrackDrag;
         PreviewMouseLeftButtonUp += EndDragTracking;
+        Closed += (_, _) => SavePlacement(_anchor, Left, Top);
         _refreshTimer.Start();
         DetailsPopup.MouseEnter += (_, _) => _hidePopupTimer.Stop();
         DetailsPopup.MouseLeave += (_, _) => SchedulePopupHide();
@@ -102,6 +104,10 @@ public partial class MainWindow : Window
         freeSettings.Click += (_, _) => OpenFreeLlmApiSettings();
         menu.Items.Add(freeSettings);
         menu.Items.Add(new Separator());
+        var startup = new MenuItem { Header = "Iniciar com o Windows", IsChecked = UserPreferencesStore.StartsWithWindows, IsCheckable = true };
+        startup.Click += (_, _) => UserPreferencesStore.SetStartsWithWindows(startup.IsChecked);
+        menu.Items.Add(startup);
+        menu.Items.Add(new Separator());
         var above = new MenuItem { Header = "Sempre no topo", IsChecked = true, IsCheckable = true };
         above.Click += (_, _) => Topmost = above.IsChecked;
         menu.Items.Add(above);
@@ -131,12 +137,33 @@ public partial class MainWindow : Window
         var targetHeight = vertical ? 480 : 165;
         var targetLeft = anchor.Contains("left") ? area.Left + margin : anchor.Contains("right") ? area.Right - targetWidth - margin : Math.Max(area.Left, Math.Min(Left, area.Right - targetWidth));
         var targetTop = anchor.StartsWith("top") ? area.Top + margin : anchor.StartsWith("bottom") ? area.Bottom - targetHeight - margin : Math.Max(area.Top, Math.Min(Top, area.Bottom - targetHeight));
+        SavePlacement(anchor, targetLeft, targetTop);
         if (animate) AnimateOrientation(vertical, targetLeft, targetTop); else { ApplyOrientation(vertical); Left = targetLeft; Top = targetTop; }
         // Os quatro cantos permanecem horizontais, como na versão Linux.
         // A orientação vertical só é aplicada por uma ancoragem lateral
         // explícita ou após o usuário encaixar o widget em uma lateral.
         // A posição é calculada depois da orientação para preservar a margem
         // da borda quando o widget muda de horizontal para vertical.
+    }
+
+    private void RestorePlacement()
+    {
+        var anchor = string.IsNullOrWhiteSpace(_preferences.Anchor) ? "top-right" : _preferences.Anchor;
+        if (anchor == "free" && double.IsFinite(_preferences.Left) && double.IsFinite(_preferences.Top) &&
+            (_preferences.Left != 0 || _preferences.Top != 0))
+        {
+            Left = _preferences.Left;
+            Top = _preferences.Top;
+        }
+        SnapToAnchor(anchor, false);
+    }
+
+    private void SavePlacement(string anchor, double left, double top)
+    {
+        _preferences.Anchor = anchor;
+        _preferences.Left = left;
+        _preferences.Top = top;
+        UserPreferencesStore.Save(_preferences);
     }
 
     private void BeginDragTracking(object sender, MouseButtonEventArgs e)
@@ -186,6 +213,7 @@ public partial class MainWindow : Window
             var targetTop = Math.Max(area.Top + margin, Math.Min(Top, area.Bottom - 480 - margin));
             AnimateOrientation(true, targetLeft, targetTop);
             _anchor = left <= right ? "left" : "right";
+            SavePlacement(_anchor, targetLeft, targetTop);
         }
         else if (nearest <= snap)
         {
@@ -193,12 +221,14 @@ public partial class MainWindow : Window
             var targetLeft = Math.Max(area.Left + margin, Math.Min(Left, area.Right - 355 - margin));
             AnimateOrientation(false, targetLeft, targetTop);
             _anchor = top <= bottom ? "top" : "bottom";
+            SavePlacement(_anchor, targetLeft, targetTop);
         }
         else
         {
             Left = Math.Max(area.Left, Math.Min(Left, area.Right - Width));
             Top = Math.Max(area.Top, Math.Min(Top, area.Bottom - Height));
             _anchor = "free";
+            SavePlacement(_anchor, Left, Top);
         }
     }
 

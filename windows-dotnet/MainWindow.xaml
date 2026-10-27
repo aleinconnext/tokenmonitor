@@ -29,7 +29,7 @@
       </Grid>
     </Border>
     <Popup x:Name="DetailsPopup" AllowsTransparency="True" StaysOpen="True"
-           Placement="Bottom" PopupAnimation="Fade">
+           PopupAnimation="Fade">
       <Border x:Name="DetailsCard" Width="380" Padding="17,15,17,13" CornerRadius="16"
               Background="#F7111318" BorderBrush="#22FFFFFF" BorderThickness="1">
         <Border.LayoutTransform>
