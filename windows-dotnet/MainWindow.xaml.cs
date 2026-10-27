@@ -1,8 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Diagnostics;
 
 namespace TokenMonitor.Windows;
 
@@ -85,7 +87,7 @@ public partial class MainWindow : Window
         Gauges.Orientation = vertical ? Orientation.Vertical : Orientation.Horizontal;
         Status.Visibility = vertical ? Visibility.Collapsed : Visibility.Visible;
         Credit.Orientation = vertical ? Orientation.Vertical : Orientation.Horizontal;
-        CreditLabel.Text = vertical ? "Alessandro Gonçalves\ntokenmonitor" : "Alessandro Gonçalves · aleinconnext/tokenmonitor";
+        UpdateCreditLabel(vertical);
         CreditLabel.TextAlignment = TextAlignment.Center;
         Credit.Margin = vertical ? new Thickness(0, 8, 0, 0) : new Thickness(0, 6, 0, 0);
         CreditIcon.Margin = vertical ? new Thickness(0, 0, 0, 5) : new Thickness(0, 0, 7, 0);
@@ -129,6 +131,35 @@ public partial class MainWindow : Window
     }
 
     private static MenuItem MenuHeader(string text) => new() { Header = text, IsEnabled = false, FontSize = 10 };
+
+    private void UpdateCreditLabel(bool vertical)
+    {
+        CreditLabel.Inlines.Clear();
+        CreditLabel.Inlines.Add(new Run("Alessandro Gonçalves"));
+        if (vertical) CreditLabel.Inlines.Add(new LineBreak());
+        else CreditLabel.Inlines.Add(new Run(" · "));
+        var link = new Hyperlink(new Run(vertical ? "tokenmonitor" : "aleinconnext/tokenmonitor"))
+        {
+            Foreground = new SolidColorBrush(Color.FromRgb(101, 112, 131)),
+            TextDecorations = null,
+            Cursor = Cursors.Hand,
+            NavigateUri = new Uri("https://github.com/aleinconnext/tokenmonitor")
+        };
+        link.Click += (_, _) => OpenProjectRepository();
+        CreditLabel.Inlines.Add(link);
+    }
+
+    private static void OpenProjectRepository()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("https://github.com/aleinconnext/tokenmonitor") { UseShellExecute = true });
+        }
+        catch
+        {
+            // A browser being unavailable must not interrupt the widget.
+        }
+    }
 
     private void AddAnchor(ContextMenu menu, string label, string anchor)
     {
