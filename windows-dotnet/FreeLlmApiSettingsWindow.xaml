@@ -1,0 +1,35 @@
+<Window x:Class="TokenMonitor.Windows.FreeLlmApiSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Configurar FreeLLMAPI" Width="470" Height="330"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent">
+  <Border Background="#F7111318" BorderBrush="#35FFFFFF" BorderThickness="1" CornerRadius="14" Padding="22">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+      <TextBlock Text="Configurar FreeLLMAPI" FontSize="17" FontWeight="SemiBold" Foreground="#E9EDF5" />
+      <TextBlock Grid.Row="1" Margin="0,5,0,18" Text="Cadastre a chave e os endereços usados pelo roteador local." FontSize="10" Foreground="#8B93A6" />
+      <StackPanel Grid.Row="2">
+        <TextBlock Text="CHAVE DA API" FontSize="9" Foreground="#65DC9A" Margin="0,0,0,4" />
+        <DockPanel>
+          <PasswordBox x:Name="ApiKeyBox" Height="29" Padding="8,5" Background="#1BFFFFFF" BorderBrush="#25FFFFFF" Foreground="#E9EDF5" />
+          <TextBox x:Name="ApiKeyTextBox" Height="29" Padding="8,5" Background="#1BFFFFFF" BorderBrush="#25FFFFFF" Foreground="#E9EDF5" Visibility="Collapsed" />
+          <Button DockPanel.Dock="Right" Width="70" Margin="8,0,0,0" Content="Mostrar" Click="ToggleKey" Background="#25282E" Foreground="#E9EDF5" BorderBrush="#35FFFFFF" />
+        </DockPanel>
+      </StackPanel>
+      <StackPanel Grid.Row="3" Margin="0,13,0,0">
+        <TextBlock Text="URL BASE DO PROXY" FontSize="9" Foreground="#65DC9A" Margin="0,0,0,4" />
+        <TextBox x:Name="BaseUrlBox" Height="29" Padding="8,5" Background="#1BFFFFFF" BorderBrush="#25FFFFFF" Foreground="#E9EDF5" />
+        <TextBlock Text="URL DO MONITOR / API DE DADOS" FontSize="9" Foreground="#65DC9A" Margin="0,11,0,4" />
+        <TextBox x:Name="MonitorUrlBox" Height="29" Padding="8,5" Background="#1BFFFFFF" BorderBrush="#25FFFFFF" Foreground="#E9EDF5" />
+      </StackPanel>
+      <TextBlock x:Name="Message" Grid.Row="4" Margin="0,10,0,0" Foreground="#D99B78" FontSize="10" TextWrapping="Wrap" />
+      <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+        <Button Width="82" Height="30" Content="Cancelar" Click="Cancel" Background="#25282E" Foreground="#E9EDF5" BorderBrush="#35FFFFFF" Margin="0,0,8,0" />
+        <Button Width="82" Height="30" Content="Salvar" Click="Save" Background="#3DDC84" Foreground="#101318" BorderBrush="#3DDC84" FontWeight="SemiBold" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>
