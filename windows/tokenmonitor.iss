@@ -1,7 +1,7 @@
 ; TokenMonitor .NET/WPF per-user installer
 
 #define MyAppName "TokenMonitor"
-#define MyAppVersion "2.4.3"
+#define MyAppVersion "2.4.4"
 #define MyAppPublisher "Alessandro Goncalves"
 #define MyAppURL "https://github.com/aleinconnext/tokenmonitor"
 

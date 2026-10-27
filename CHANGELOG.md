@@ -1,5 +1,15 @@
 ## Unreleased
 
+## 2.4.4 - 2026-10-27
+
+### Added
+- Windows system tray integration with the Linux-style TokenMonitor icon.
+- Tray actions to open the widget or exit the application.
+- English release documentation with installation instructions and checksums.
+
+### Fixed
+- Windows release packaging now includes the tray-enabled .NET/WPF executable.
+
 ## 2.4.3 - 2026-10-27
 
 ### Added
