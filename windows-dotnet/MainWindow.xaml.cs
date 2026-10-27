@@ -19,7 +19,10 @@ public partial class MainWindow : Window
     private bool _vertical;
     private string _anchor = "top-right";
     private Point _dragStart;
+    private Point _dragScreenStart;
+    private Point _windowStart;
     private bool _trackingDrag;
+    private bool _dragging;
     private readonly DataCollector _collector = new();
     private readonly Dictionary<string, GaugeData> _data = new();
     private readonly UserPreferences _preferences = UserPreferencesStore.Load();
@@ -213,21 +216,43 @@ public partial class MainWindow : Window
     {
         if (e.OriginalSource is DependencyObject source && IsPopupElement(source)) return;
         _dragStart = e.GetPosition(this);
+        _dragScreenStart = PointToScreen(_dragStart);
+        _windowStart = new Point(Left, Top);
         _trackingDrag = true;
+        _dragging = false;
     }
 
     private void TrackDrag(object sender, MouseEventArgs e)
     {
         if (!_trackingDrag || e.LeftButton != MouseButtonState.Pressed) return;
         var point = e.GetPosition(this);
-        if (Math.Abs(point.X - _dragStart.X) < 5 && Math.Abs(point.Y - _dragStart.Y) < 5) return;
-        _trackingDrag = false;
-        DetailsPopup.IsOpen = false;
-        try { DragMove(); } catch (InvalidOperationException) { return; }
-        SnapAfterDrag();
+        if (!_dragging && Math.Abs(point.X - _dragStart.X) < 5 && Math.Abs(point.Y - _dragStart.Y) < 5) return;
+        if (!_dragging)
+        {
+            _dragging = true;
+            DetailsPopup.IsOpen = false;
+            Mouse.Capture(this, CaptureMode.SubTree);
+        }
+
+        var screenPoint = PointToScreen(point);
+        Left = _windowStart.X + screenPoint.X - _dragScreenStart.X;
+        Top = _windowStart.Y + screenPoint.Y - _dragScreenStart.Y;
+        e.Handled = true;
     }
 
-    private void EndDragTracking(object sender, MouseButtonEventArgs e) => _trackingDrag = false;
+    private void EndDragTracking(object sender, MouseButtonEventArgs e)
+    {
+        if (!_trackingDrag) return;
+        var wasDragging = _dragging;
+        _trackingDrag = false;
+        _dragging = false;
+        if (Mouse.Captured == this) Mouse.Capture(null);
+        if (wasDragging)
+        {
+            SnapAfterDrag();
+            e.Handled = true;
+        }
+    }
 
     private static bool IsPopupElement(DependencyObject? source)
     {
