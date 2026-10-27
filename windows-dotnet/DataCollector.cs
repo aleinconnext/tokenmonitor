@@ -156,7 +156,11 @@ public sealed class DataCollector
 
     private async Task<GaugeData> CollectCodexAsync(CancellationToken ct)
     {
-        var empty = new GaugeData("codex", "Codex", null, "—", [], null); var root = Path.Combine(_home, ".codex", "sessions");
+        var empty = new GaugeData("codex", "Codex", null, "—", [], null);
+        var live = await CollectCodexLiveAsync(empty, ct);
+        if (live.Percent.HasValue) return live;
+
+        var root = Path.Combine(_home, ".codex", "sessions");
         if (!Directory.Exists(root)) return empty with { Note = "nenhuma sessão local do Codex encontrada" };
         try
         {
@@ -186,6 +190,81 @@ public sealed class DataCollector
         }
         catch (Exception ex) { return empty with { Note = $"não foi possível ler o Codex: {ex.Message}" }; }
     }
+
+    private async Task<GaugeData> CollectCodexLiveAsync(GaugeData empty, CancellationToken ct)
+    {
+        var credentials = ReadCodexCredentials();
+        if (credentials is null) return empty with { Note = "sessão do Codex não encontrada em .codex\\auth.json" };
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://chatgpt.com/backend-api/wham/usage");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", credentials.Value.AccessToken);
+            request.Headers.TryAddWithoutValidation("ChatGPT-Account-Id", credentials.Value.AccountId);
+            request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true, NoStore = true };
+            request.Headers.UserAgent.ParseAdd("TokenMonitor/Windows");
+            request.Headers.Accept.ParseAdd("application/json");
+            using var response = await _http.SendAsync(request, ct);
+            if ((int)response.StatusCode is 401 or 403)
+                return empty with { Note = "Codex recusou a sessão; execute codex login novamente" };
+            if ((int)response.StatusCode == 429)
+                return empty with { Note = "limite temporário da API do Codex; tente novamente em instantes" };
+            response.EnsureSuccessStatusCode();
+
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            var rateLimit = GetObject(doc.RootElement, "rate_limit");
+            var primary = ParseCodexWindow(rateLimit, "primary_window", "5h");
+            var secondary = ParseCodexWindow(rateLimit, "secondary_window", "7d");
+            var windows = new[] { primary, secondary }.Where(w => w.HasValue).Select(w => w!.Value).ToList();
+            if (windows.Count == 0) return empty with { Note = "API do Codex respondeu sem janelas de uso" };
+
+            var details = windows.Select(w => ($"Janela {w.Label}", $"{w.Percent:0.0}% · reset {Clock(w.Reset)}")).ToList();
+            var plan = GetString(doc.RootElement, "plan_type");
+            if (!string.IsNullOrWhiteSpace(plan)) details.Add(("Plano", plan));
+            details.Add(("Fonte", "Codex OAuth oficial"));
+            var current = windows[0];
+            return new GaugeData("codex", "Codex", current.Percent, ResetLabel(current.Reset), details, null);
+        }
+        catch (HttpRequestException ex) { return empty with { Note = $"API do Codex indisponível: {ex.Message}" }; }
+        catch (JsonException ex) { return empty with { Note = $"resposta da API do Codex inválida: {ex.Message}" }; }
+        catch (Exception ex) { return empty with { Note = $"consulta do Codex falhou: {ex.Message}" }; }
+    }
+
+    private (string AccessToken, string AccountId)? ReadCodexCredentials()
+    {
+        var path = Path.Combine(_home, ".codex", "auth.json");
+        if (!File.Exists(path)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            var tokens = GetObject(doc.RootElement, "tokens");
+            var accessToken = GetString(tokens, "access_token");
+            var accountId = GetString(tokens, "account_id");
+            return !string.IsNullOrWhiteSpace(accessToken) && !string.IsNullOrWhiteSpace(accountId)
+                ? (accessToken, accountId)
+                : null;
+        }
+        catch (JsonException) { return null; }
+    }
+
+    private static (string Label, double Percent, double? Reset)? ParseCodexWindow(JsonElement rateLimit, string key, string fallbackLabel)
+    {
+        var window = GetObject(rateLimit, key);
+        if (window.ValueKind != JsonValueKind.Object) return null;
+        var percent = GetDouble(window, "used_percent");
+        if (percent is not double used) return null;
+        var reset = GetEpochSeconds(window, "reset_at");
+        if (!reset.HasValue && GetDouble(window, "reset_after_seconds") is double after)
+            reset = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + after;
+        return (WindowLabel(GetDouble(window, "limit_window_seconds") ?? 0, fallbackLabel), Math.Clamp(used, 0, 100), reset);
+    }
+
+    private static string WindowLabel(double seconds, string fallback) => seconds switch
+    {
+        >= 300 * 60 - 60 and <= 300 * 60 + 60 => "5h",
+        >= 7 * 24 * 60 * 60 - 60 and <= 7 * 24 * 60 * 60 + 60 => "7d",
+        _ => fallback
+    };
 
     private async Task<GaugeData> CollectFreeLlmApiAsync(CancellationToken ct)
     {
