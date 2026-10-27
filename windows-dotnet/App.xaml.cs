@@ -7,6 +7,8 @@ namespace TokenMonitor.Windows;
 
 public partial class App : Application
 {
+    private TrayIcon? _trayIcon;
+
     public App()
     {
         DispatcherUnhandledException += OnDispatcherUnhandledException;
@@ -22,6 +24,8 @@ public partial class App : Application
             var window = new MainWindow();
             MainWindow = window;
             window.Show();
+            _trayIcon = new TrayIcon(window);
+            Exit += (_, _) => _trayIcon.Dispose();
         }
         catch (Exception ex)
         {
