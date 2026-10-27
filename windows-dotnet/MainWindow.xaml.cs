@@ -247,35 +247,29 @@ public partial class MainWindow : Window
 
     private void SnapAfterDrag()
     {
+        var area = GetCurrentWorkArea();
         const double margin = 12;
         const double snap = 40;
-        var edge = GetAllWorkAreas()
-            .SelectMany(area => new[]
-            {
-                (Area: area, Side: "left", Distance: Math.Abs(Left - area.Left)),
-                (Area: area, Side: "right", Distance: Math.Abs(area.Right - (Left + Width))),
-                (Area: area, Side: "top", Distance: Math.Abs(Top - area.Top)),
-                (Area: area, Side: "bottom", Distance: Math.Abs(area.Bottom - (Top + Height)))
-            })
-            .OrderBy(candidate => candidate.Distance)
-            .First();
-        var area = edge.Area;
-        var nearest = edge.Distance;
+        var left = Math.Abs(Left - area.Left);
+        var right = Math.Abs(area.Right - (Left + Width));
+        var top = Math.Abs(Top - area.Top);
+        var bottom = Math.Abs(area.Bottom - (Top + Height));
+        var nearest = Math.Min(Math.Min(left, right), Math.Min(top, bottom));
 
-        if (nearest <= snap && (edge.Side is "left" or "right"))
+        if (nearest <= snap && (left == nearest || right == nearest))
         {
-            var targetLeft = edge.Side == "left" ? area.Left + margin : area.Right - 110 - margin;
+            var targetLeft = left <= right ? area.Left + margin : area.Right - 110 - margin;
             var targetTop = Math.Max(area.Top + margin, Math.Min(Top, area.Bottom - 480 - margin));
             AnimateOrientation(true, targetLeft, targetTop);
-            _anchor = edge.Side;
+            _anchor = left <= right ? "left" : "right";
             SavePlacement(_anchor, targetLeft, targetTop);
         }
         else if (nearest <= snap)
         {
-            var targetTop = edge.Side == "top" ? area.Top + margin : area.Bottom - 165 - margin;
+            var targetTop = top <= bottom ? area.Top + margin : area.Bottom - 165 - margin;
             var targetLeft = Math.Max(area.Left + margin, Math.Min(Left, area.Right - 355 - margin));
             AnimateOrientation(false, targetLeft, targetTop);
-            _anchor = edge.Side;
+            _anchor = top <= bottom ? "top" : "bottom";
             SavePlacement(_anchor, targetLeft, targetTop);
         }
         else
@@ -330,12 +324,6 @@ public partial class MainWindow : Window
         return GetWorkAreaForPoint(Left + Width / 2, Top + Height / 2);
     }
 
-    private List<Rect> GetAllWorkAreas()
-    {
-        var areas = NativeMethods.GetAllWorkAreas();
-        return areas.Count > 0 ? areas : new List<Rect> { GetCurrentWorkArea() };
-    }
-
     private static Rect GetWorkAreaForPoint(double x, double y)
     {
         var point = new NativeMethods.Point { X = (int)Math.Round(x), Y = (int)Math.Round(y) };
@@ -361,25 +349,9 @@ public partial class MainWindow : Window
             return monitor != IntPtr.Zero && GetMonitorInfoNative(monitor, ref info);
         }
 
-        public static List<Rect> GetAllWorkAreas()
-        {
-            var areas = new List<Rect>();
-            EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, (monitor, _, _, _) =>
-            {
-                if (TryGetMonitorInfo(monitor, out var info)) areas.Add(info.WorkArea);
-                return true;
-            }, IntPtr.Zero);
-            return areas;
-        }
-
         [DllImport("user32.dll", CharSet = CharSet.Auto, EntryPoint = "GetMonitorInfo")]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GetMonitorInfoNative(IntPtr hMonitor, ref MonitorInfo info);
-
-        private delegate bool MonitorEnumProc(IntPtr monitor, IntPtr hdc, IntPtr clip, IntPtr data);
-
-        [DllImport("user32.dll")]
-        private static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip, MonitorEnumProc callback, IntPtr data);
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Point
