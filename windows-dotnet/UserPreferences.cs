@@ -7,8 +7,8 @@ namespace TokenMonitor.Windows;
 internal sealed class UserPreferences
 {
     public string Anchor { get; set; } = "top-right";
-    public double Left { get; set; }
-    public double Top { get; set; }
+    public double? Left { get; set; }
+    public double? Top { get; set; }
     public bool Topmost { get; set; } = true;
 }
 

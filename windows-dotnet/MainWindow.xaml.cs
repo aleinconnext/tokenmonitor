@@ -159,17 +159,25 @@ public partial class MainWindow : Window
     private void RestorePlacement()
     {
         var anchor = string.IsNullOrWhiteSpace(_preferences.Anchor) ? "top-right" : _preferences.Anchor;
-        if (anchor == "free" && double.IsFinite(_preferences.Left) && double.IsFinite(_preferences.Top) &&
-            (_preferences.Left != 0 || _preferences.Top != 0))
+        var vertical = anchor is "left" or "right" || (_vertical && anchor == "free");
+        if (_preferences.Left is double savedLeft && _preferences.Top is double savedTop &&
+            double.IsFinite(savedLeft) && double.IsFinite(savedTop))
         {
-            Left = _preferences.Left;
-            Top = _preferences.Top;
+            var area = SystemParameters.WorkArea;
+            var width = vertical ? 110 : 355;
+            var height = vertical ? 480 : 165;
+            ApplyOrientation(vertical);
+            Left = Math.Max(area.Left, Math.Min(savedLeft, area.Right - width));
+            Top = Math.Max(area.Top, Math.Min(savedTop, area.Bottom - height));
+            _anchor = anchor;
+            return;
         }
         SnapToAnchor(anchor, false);
     }
 
     private void SavePlacement(string anchor, double left, double top)
     {
+        if (!double.IsFinite(left) || !double.IsFinite(top)) return;
         _preferences.Anchor = anchor;
         _preferences.Left = left;
         _preferences.Top = top;
