@@ -5,6 +5,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 
 namespace TokenMonitor.Windows;
 
@@ -164,7 +166,7 @@ public partial class MainWindow : Window
     {
         _anchor = anchor;
         var vertical = anchor is "left" or "right" || (_vertical && anchor == "free");
-        var area = SystemParameters.WorkArea;
+        var area = GetCurrentWorkArea();
         var margin = 12.0;
         var targetWidth = vertical ? 110 : 355;
         var targetHeight = vertical ? 480 : 165;
@@ -186,9 +188,9 @@ public partial class MainWindow : Window
         if (_preferences.Left is double savedLeft && _preferences.Top is double savedTop &&
             double.IsFinite(savedLeft) && double.IsFinite(savedTop))
         {
-            var area = SystemParameters.WorkArea;
             var width = vertical ? 110 : 355;
             var height = vertical ? 480 : 165;
+            var area = GetWorkAreaForPoint(savedLeft + width / 2, savedTop + height / 2);
             ApplyOrientation(vertical);
             Left = Math.Max(area.Left, Math.Min(savedLeft, area.Right - width));
             Top = Math.Max(area.Top, Math.Min(savedTop, area.Bottom - height));
@@ -245,7 +247,7 @@ public partial class MainWindow : Window
 
     private void SnapAfterDrag()
     {
-        var area = SystemParameters.WorkArea;
+        var area = GetCurrentWorkArea();
         const double margin = 12;
         const double snap = 40;
         var left = Math.Abs(Left - area.Left);
@@ -312,6 +314,72 @@ public partial class MainWindow : Window
     }
 
     private static double Lerp(double from, double to, double amount) => from + ((to - from) * amount);
+
+    private Rect GetCurrentWorkArea()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle != IntPtr.Zero && NativeMethods.TryGetMonitorInfo(
+                NativeMethods.MonitorFromWindow(handle, NativeMethods.MonitorDefaultToNearest), out var info))
+            return info.WorkArea;
+        return GetWorkAreaForPoint(Left + Width / 2, Top + Height / 2);
+    }
+
+    private static Rect GetWorkAreaForPoint(double x, double y)
+    {
+        var point = new NativeMethods.Point { X = (int)Math.Round(x), Y = (int)Math.Round(y) };
+        var monitor = NativeMethods.MonitorFromPoint(point, NativeMethods.MonitorDefaultToNearest);
+        return monitor != IntPtr.Zero && NativeMethods.TryGetMonitorInfo(monitor, out var info)
+            ? info.WorkArea
+            : SystemParameters.WorkArea;
+    }
+
+    private static class NativeMethods
+    {
+        public const uint MonitorDefaultToNearest = 2;
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint flags);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr MonitorFromPoint(Point point, uint flags);
+
+        public static bool TryGetMonitorInfo(IntPtr monitor, out MonitorInfo info)
+        {
+            info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+            return monitor != IntPtr.Zero && GetMonitorInfoNative(monitor, ref info);
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, EntryPoint = "GetMonitorInfo")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetMonitorInfoNative(IntPtr hMonitor, ref MonitorInfo info);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct Point
+        {
+            public int X;
+            public int Y;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        public struct MonitorInfo
+        {
+            public int Size;
+            public RectNative Monitor;
+            public RectNative Work;
+            public uint Flags;
+
+            public Rect WorkArea => new(Work.Left, Work.Top, Work.Right - Work.Left, Work.Bottom - Work.Top);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RectNative
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+    }
 
     private async Task RefreshDataAsync()
     {
