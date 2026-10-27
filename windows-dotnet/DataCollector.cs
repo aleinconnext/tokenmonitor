@@ -37,6 +37,7 @@ public sealed class DataCollector
             rows.Add(("Burn rate", $"{Human(GetDouble(local, "burn_rate_tokens_per_minute"))} tok/min"));
             rows.Add(("Pace", GetString(GetObject(doc.RootElement, "pace"), "label") ?? "—"));
             rows.Add(("Confiança", GetString(five, "confidence") ?? "—"));
+            rows.Add(("Reset", ResetLabel(reset)));
             return new GaugeData("claude", "Claude Code", pct, ResetLabel(reset), rows, null);
         }
         catch (Exception ex) { return empty with { Note = $"claude-monitor falhou: {ex.Message}" }; }
@@ -180,6 +181,7 @@ public sealed class DataCollector
                     var pct = GetDouble(p, "used_percent"); var reset = GetDouble(p, "resets_in_seconds");
                     var details = new List<(string, string)> { ("Janela primária", $"{Pct(pct)} · {GetDouble(p, "window_minutes") ?? 0:0} min") };
                     if (s.ValueKind == JsonValueKind.Object) details.Add(("Janela secundária", $"{GetDouble(s, "used_percent") ?? 0:0.0}% · {GetDouble(s, "window_minutes") ?? 0:0} min"));
+                    details.Add(("Reset", ResetLabel(DateTimeOffset.UtcNow.ToUnixTimeSeconds() + (reset ?? 0))));
                     var info = GetObject(GetObject(doc.RootElement, "payload"), "info");
                     if (GetDouble(GetObject(info, "total_token_usage"), "total_tokens") is double total) details.Add(("Tokens na sessão", Human(total)));
                     if (GetDouble(info, "model_context_window") is double context) details.Add(("Contexto", Human(context)));
@@ -296,7 +298,7 @@ public sealed class DataCollector
             using var doc = JsonDocument.Parse(raw[start..(end + 1)]); var root = doc.RootElement; var pressure = GetObject(root, "pressure"); var requests = GetObject(root, "requests"); var monthly = GetObject(root, "monthly"); var models = GetObject(root, "models");
             var pct = GetDouble(pressure, "pct"); var win = GetString(pressure, "window") ?? "—"; var used = GetDouble(pressure, "used"); var limit = GetDouble(pressure, "limit");
             var details = new List<(string, string)>(); if (pressure.ValueKind == JsonValueKind.Object) { details.Add(("Pressão", $"{GetDouble(pressure, "raw_pct") ?? pct ?? 0:0.0}% · {GetString(pressure, "model") ?? "—"}")); details.Add(("Janela", $"{win} {Human(used)}/{Human(limit)} · {GetString(pressure, "key_label") ?? "—"}")); }
-            details.Add(("Últimas 24h", $"{GetDouble(requests, "total") ?? 0:0} req · {GetDouble(requests, "success_pct") ?? 0:0.0}% sucesso")); details.Add(("Tokens 24h", Human(GetDouble(requests, "tokens")))); details.Add(("Mês", $"{GetDouble(monthly, "requests") ?? 0:0} req · {Human(GetDouble(monthly, "tokens"))} tok")); details.Add(("Modelos", $"{GetDouble(models, "enabled") ?? 0:0} · {GetDouble(models, "routable_limits") ?? 0:0} com limites")); details.Add(("Proxy", settings.BaseUrl));
+            details.Add(("Últimas 24h", $"{GetDouble(requests, "total") ?? 0:0} req · {GetDouble(requests, "success_pct") ?? 0:0.0}% sucesso")); details.Add(("Tokens 24h", Human(GetDouble(requests, "tokens")))); details.Add(("Mês", $"{GetDouble(monthly, "requests") ?? 0:0} req · {Human(GetDouble(monthly, "tokens"))} tok")); details.Add(("Reset", ResetLabel(GetEpochSeconds(monthly, "resets_at")))); details.Add(("Modelos", $"{GetDouble(models, "enabled") ?? 0:0} · {GetDouble(models, "routable_limits") ?? 0:0} com limites")); details.Add(("Proxy", settings.BaseUrl));
             return new GaugeData("freellmapi", "FreeLLMAPI", pct, limit.HasValue ? $"{Human(used)}/{Human(limit)}" : "online", details, "Pressão = pior janela entre os modelos com chave elegível");
         }
         catch (Exception ex) { return empty with { Note = $"FreeLLMAPI online, mas a consulta Docker falhou: {ex.Message}" }; }
@@ -306,13 +308,14 @@ public sealed class DataCollector
     {
         var rows = catalog.ValueKind == JsonValueKind.Object && catalog.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array ? data.EnumerateArray().ToArray() : Array.Empty<JsonElement>();
         var available = rows.Count(row => GetBool(row, "available"));
-        var details = new List<(string, string)> { ("Modelos", $"{available}/{rows.Length} disponíveis"), ("Modo", "auto / auto:fast"), ("Proxy", settings.BaseUrl) };
+        var details = new List<(string, string)> { ("Modelos", $"{available}/{rows.Length} disponíveis"), ("Modo", "auto / auto:fast"), ("Reset", "—"), ("Proxy", settings.BaseUrl) };
         var sections = new List<GaugePanelSection>();
         var pressure = new List<(string, string)> { ("Status", "online"), ("Pressão", "indisponível sem SQLite do Docker") };
         sections.Add(new GaugePanelSection("PRESSÃO DE LIMITE", pressure));
         if (usage is JsonElement usageRoot && usageRoot.ValueKind == JsonValueKind.Object)
         {
-            var usageRows = new List<(string, string)> { ("Requisições", Number(usageRoot, "requests")), ("Tokens", Human(GetDouble(usageRoot, "tokens"))), ("Mês", GetString(usageRoot, "month") ?? "—"), ("Reset", GetString(usageRoot, "resetsAt") ?? "—") };
+            var usageRows = new List<(string, string)> { ("Requisições", Number(usageRoot, "requests")), ("Tokens", Human(GetDouble(usageRoot, "tokens"))), ("Mês", GetString(usageRoot, "month") ?? "—"), ("Reset", GetString(usageRoot, "resetsAt") ?? ResetLabel(GetEpochSeconds(usageRoot, "resets_at"))) };
+            details[2] = ("Reset", usageRows[^1].Item2);
             sections.Add(new GaugePanelSection("USO DO MÊS", usageRows));
             if (usageRoot.TryGetProperty("byPlatform", out var byPlatform) && byPlatform.ValueKind == JsonValueKind.Array)
                 sections.Add(new GaugePanelSection("POR PROVEDOR", byPlatform.EnumerateArray().Select(p => (GetString(p, "platform") ?? "—", $"{Number(p, "requests")} req · {Human(GetDouble(p, "tokens"))} tok")).ToArray()));
