@@ -4,3 +4,8 @@ build/
 dist/
 *.deb
 .venv/
+
+# Artefatos locais dos builds Windows/.NET.
+windows-dotnet/bin/
+windows-dotnet/obj/
+windows/gtk/
