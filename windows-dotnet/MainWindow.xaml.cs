@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Topmost = _preferences.Topmost;
         CreateGauges();
         CreditIcon.Source = IconAssets.Load("github");
         BuildContextMenu();
@@ -37,7 +38,11 @@ public partial class MainWindow : Window
         PreviewMouseLeftButtonDown += BeginDragTracking;
         PreviewMouseMove += TrackDrag;
         PreviewMouseLeftButtonUp += EndDragTracking;
-        Closed += (_, _) => SavePlacement(_anchor, Left, Top);
+        Closed += (_, _) =>
+        {
+            _preferences.Topmost = Topmost;
+            SavePlacement(_anchor, Left, Top);
+        };
         _refreshTimer.Start();
         DetailsPopup.MouseEnter += (_, _) => _hidePopupTimer.Stop();
         DetailsPopup.MouseLeave += (_, _) => SchedulePopupHide();
@@ -108,8 +113,13 @@ public partial class MainWindow : Window
         startup.Click += (_, _) => UserPreferencesStore.SetStartsWithWindows(startup.IsChecked);
         menu.Items.Add(startup);
         menu.Items.Add(new Separator());
-        var above = new MenuItem { Header = "Sempre no topo", IsChecked = true, IsCheckable = true };
-        above.Click += (_, _) => Topmost = above.IsChecked;
+        var above = new MenuItem { Header = "Sempre no topo", IsChecked = Topmost, IsCheckable = true };
+        above.Click += (_, _) =>
+        {
+            Topmost = above.IsChecked;
+            _preferences.Topmost = Topmost;
+            SavePlacement(_anchor, Left, Top);
+        };
         menu.Items.Add(above);
         menu.Items.Add(new Separator());
         var exit = new MenuItem { Header = "Sair" };
