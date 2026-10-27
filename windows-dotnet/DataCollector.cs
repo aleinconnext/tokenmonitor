@@ -20,8 +20,10 @@ public sealed class DataCollector
     private async Task<GaugeData> CollectClaudeAsync(CancellationToken ct)
     {
         var empty = new GaugeData("claude", "Claude Code", null, "—", [], null);
+        var oauth = await CollectClaudeOAuthAsync(empty, ct);
+        if (oauth.Percent.HasValue) return oauth;
         var exe = FindExecutable("claude-monitor");
-        if (exe is null) return empty with { Note = "claude-monitor não encontrado no Windows" };
+        if (exe is null) return oauth;
         try
         {
             using var doc = JsonDocument.Parse(await RunAsync(exe, "--once --output json", ct));
@@ -39,6 +41,96 @@ public sealed class DataCollector
         }
         catch (Exception ex) { return empty with { Note = $"claude-monitor falhou: {ex.Message}" }; }
     }
+
+    private async Task<GaugeData> CollectClaudeOAuthAsync(GaugeData empty, CancellationToken ct)
+    {
+        var credentials = ReadClaudeCredentials();
+        if (credentials is null) return empty with { Note = "credencial OAuth do Claude Code não encontrada" };
+        if (credentials.Value.ExpiresAt is double expiry && expiry > 0 && expiry < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+            return empty with { Note = "credencial OAuth do Claude Code expirada; execute claude no terminal para renovar" };
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.anthropic.com/api/oauth/usage");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", credentials.Value.Token);
+            request.Headers.TryAddWithoutValidation("anthropic-beta", "oauth-2025-04-20");
+            request.Headers.Accept.ParseAdd("application/json");
+            using var response = await _http.SendAsync(request, ct);
+            if ((int)response.StatusCode == 401)
+                return empty with { Note = "Claude recusou a credencial OAuth; execute claude no terminal para renovar" };
+            if ((int)response.StatusCode == 429)
+                return empty with { Note = "limite temporário da API do Claude; tente novamente em instantes" };
+            response.EnsureSuccessStatusCode();
+
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            var windows = ParseClaudeWindows(doc.RootElement);
+            var primary = windows.FirstOrDefault(w => w.Kind is "session" or "five_hour");
+            if (primary == default) primary = windows.FirstOrDefault();
+            if (primary == default) return empty with { Note = "API do Claude respondeu sem janelas de uso" };
+
+            var rows = windows.Select(w => ($"{ClaudeWindowLabel(w.Kind)}", $"{w.Percent:0.0}% · reset {Clock(w.Reset)}")).ToList();
+            rows.Add(("Fonte", "Claude Code OAuth oficial"));
+            return new GaugeData("claude", "Claude Code", primary.Percent, ResetLabel(primary.Reset), rows, null);
+        }
+        catch (HttpRequestException ex) { return empty with { Note = $"API OAuth do Claude indisponível: {ex.Message}" }; }
+        catch (JsonException ex) { return empty with { Note = $"resposta da API do Claude inválida: {ex.Message}" }; }
+        catch (Exception ex) { return empty with { Note = $"consulta OAuth do Claude falhou: {ex.Message}" }; }
+    }
+
+    private (string Token, double? ExpiresAt)? ReadClaudeCredentials()
+    {
+        var config = Path.Combine(_home, ".claude");
+        foreach (var name in new[] { ".credentials.json", "credentials.json" })
+        {
+            var path = Path.Combine(config, name);
+            if (!File.Exists(path)) continue;
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                var oauth = doc.RootElement.TryGetProperty("claudeAiOauth", out var nested) ? nested : doc.RootElement;
+                var token = GetString(oauth, "accessToken");
+                if (!string.IsNullOrWhiteSpace(token)) return (token, GetDouble(oauth, "expiresAt"));
+            }
+            catch (JsonException) { }
+        }
+        return null;
+    }
+
+    private static List<(string Kind, double Percent, double? Reset)> ParseClaudeWindows(JsonElement root)
+    {
+        var result = new List<(string Kind, double Percent, double? Reset)>();
+        if (root.TryGetProperty("limits", out var limits) && limits.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in limits.EnumerateArray())
+            {
+                var kind = GetString(item, "kind");
+                var percent = GetDouble(item, "percent");
+                var reset = GetEpochSeconds(item, "resets_at");
+                if (!string.IsNullOrWhiteSpace(kind) && percent is double p && reset.HasValue)
+                    result.Add((kind, Math.Clamp(p, 0, 100), reset));
+            }
+        }
+        foreach (var fallback in new[] { (Field: "five_hour", Kind: "session"), (Field: "seven_day", Kind: "seven_day") })
+        {
+            var item = GetObject(root, fallback.Field);
+            var percent = GetDouble(item, "utilization");
+            var reset = GetEpochSeconds(item, "resets_at");
+            var duplicate = result.Any(w => fallback.Kind == "session"
+                ? w.Kind is "session" or "five_hour"
+                : w.Kind is "seven_day" or "weekly_all" or "weekly");
+            if (percent is double p && reset.HasValue && !duplicate)
+                result.Add((fallback.Kind, Math.Clamp(p, 0, 100), reset));
+        }
+        return result;
+    }
+
+    private static string ClaudeWindowLabel(string kind) => kind switch
+    {
+        "session" or "five_hour" => "Janela 5h",
+        "seven_day" or "weekly_all" or "weekly" => "Janela 7d",
+        "seven_day_opus" or "weekly_opus" => "Janela 7d Opus",
+        _ => kind.Replace('_', ' ')
+    };
 
     private async Task<GaugeData> CollectCursorAsync(CancellationToken ct)
     {
@@ -185,6 +277,13 @@ public sealed class DataCollector
     private static string? GetString(JsonElement e, string key) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
     private static bool GetBool(JsonElement e, string key) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.True;
     private static double? GetDouble(JsonElement e, string key) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetDouble(out var n) ? n : null;
+    private static double? GetEpochSeconds(JsonElement e, string key)
+    {
+        if (e.ValueKind != JsonValueKind.Object || !e.TryGetProperty(key, out var value)) return null;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var number)) return number > 1_000_000_000_000 ? number / 1000 : number;
+        if (value.ValueKind == JsonValueKind.String && DateTimeOffset.TryParse(value.GetString(), out var date)) return date.ToUnixTimeSeconds();
+        return null;
+    }
     private static string Pct(double? n) => n.HasValue ? $"{n.Value:0.0}%" : "—";
     private static string Number(JsonElement e, string key) => GetDouble(e, key)?.ToString("0") ?? "0";
     private static string Human(double? n) => !n.HasValue ? "—" : n.Value >= 1_000_000 ? $"{n.Value / 1_000_000:0.0}M" : n.Value >= 1000 ? $"{n.Value / 1000:0.0}k" : $"{n.Value:0}";
