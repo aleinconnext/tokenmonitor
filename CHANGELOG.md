@@ -1,5 +1,15 @@
 ## Unreleased
 
+## 2.4.3 - 2026-10-27
+
+### Added
+- Windows .NET/WPF installer using the self-contained widget build.
+- Persistent Windows placement, startup and always-on-top behavior.
+- Official Claude and Codex usage collectors with reset details in popovers.
+
+### Fixed
+- Windows installer no longer targets protected `Program Files` directories.
+
 ## 2.4.2 - 2026-10-26
 
 ### Added
