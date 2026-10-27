@@ -235,12 +235,18 @@ public partial class MainWindow : Window
 
     private void EndDragTracking(object sender, MouseButtonEventArgs e) => _trackingDrag = false;
 
-    private static bool IsPopupElement(DependencyObject source)
+    private static bool IsPopupElement(DependencyObject? source)
     {
         while (source is not null)
         {
             if (source is System.Windows.Controls.Primitives.Popup) return true;
-            source = VisualTreeHelper.GetParent(source);
+            source = source switch
+            {
+                Visual visual => VisualTreeHelper.GetParent(visual),
+                System.Windows.Media.Media3D.Visual3D visual3D => VisualTreeHelper.GetParent(visual3D),
+                FrameworkContentElement content => content.Parent,
+                _ => null
+            };
         }
         return false;
     }
